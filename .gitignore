@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+
+ARCHITECTURE.md
+IMPLEMENTATION_PLAN.md
+# Env & secrets
+.env
+.env.local
+*.key
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Runtime artifacts
+backend/artifacts/
+backend/.call_budget.json
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,21 @@
+# Pinned to versions that ship cp314 wheels. Python 3.14 is new enough that
+# older pins fall back to building pydantic-core from source, which needs a Rust
+# toolchain and takes many minutes.
+
+# --- CALL-E -----------------------------------------------------------------
+calle-ai==0.7.0
+
+# --- API layer --------------------------------------------------------------
+fastapi>=0.128
+uvicorn[standard]>=0.52
+websockets>=15
+pydantic>=2.12
+pydantic-settings>=2.15
+python-dotenv>=1.1
+httpx>=0.28
+
+# --- Referral packet --------------------------------------------------------
+reportlab>=4.4
+
+# --- Tests ------------------------------------------------------------------
+pytest>=8.4
