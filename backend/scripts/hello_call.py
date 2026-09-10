@@ -23,6 +23,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.agent.tools.budget import budget  # noqa: E402
+from app.agent.tools.telephony import (  # noqa: E402
+    locale_for_region,
+    recipient_for,
+    region_for_phone,
+)
 from app.config import settings  # noqa: E402
 
 E164_HINT = "Phone must be E.164, e.g. +15555550100"
@@ -79,6 +84,14 @@ def _preflight(phone: str, execute: bool) -> bool:
         print(f"  [ok]   Destination {phone}")
     else:
         print(f"  [FAIL] Bad destination {phone!r}. {E164_HINT}")
+        ok = False
+
+    region = region_for_phone(phone)
+    if region:
+        print(f"  [ok]   Region {region}, locale {locale_for_region(region)}")
+    else:
+        print(f"  [FAIL] {phone} is outside CALL-E's coverage table.")
+        print("         See https://docs.heycall-e.com/regions")
         ok = False
 
     print(f"  [info] Budget: {budget.summary()}")
@@ -163,7 +176,13 @@ def _report(call: object) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--to", required=True, help=f"Destination. {E164_HINT}")
+    parser.add_argument(
+        "--to",
+        default=settings.demo_phone_primary,
+        help=f"Destination. Defaults to DEMO_PHONE_PRIMARY from .env. {E164_HINT}",
+    )
+    parser.add_argument("--region", help="Override the inferred region, e.g. NG")
+    parser.add_argument("--locale", help="Override the inferred locale, e.g. en-NG")
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -175,6 +194,11 @@ def main() -> int:
         help="Write the raw terminal payload to a JSON file for inspection.",
     )
     args = parser.parse_args()
+
+    if not args.to:
+        parser.error(
+            "No destination. Pass --to +234... or set DEMO_PHONE_PRIMARY in .env"
+        )
 
     ready = _preflight(args.to, args.execute)
 
@@ -201,13 +225,23 @@ def main() -> int:
     print(f"\nDialing {args.to} ... (live call {spent} of {budget.ceiling})")
     print("This blocks until the call reaches a terminal state.\n")
 
+    from calle.errors import CalleAPIError
+
     started = datetime.now(timezone.utc)
-    call = client.calls.create_and_wait(
-        task=TASK.format(phone=args.to),
-        recipients=[{"phones": [args.to], "region": "US", "locale": "en-US"}],
-        result_schema=RESULT_SCHEMA,
-        metadata={"app": "dischargepulse", "purpose": "smoke-test"},
-    )
+    try:
+        call = client.calls.create_and_wait(
+            task=TASK.format(phone=args.to),
+            recipients=[recipient_for(args.to, args.region, args.locale)],
+            result_schema=RESULT_SCHEMA,
+            metadata={"app": "dischargepulse", "purpose": "smoke-test"},
+        )
+    except CalleAPIError as exc:
+        # Rejected before anything was dialed, so the reservation is refunded.
+        budget.release(reason=f"rejected: {exc}")
+        print("  CALL-E REJECTED THE REQUEST - nothing was dialed.\n")
+        print(f"  {exc}\n")
+        print(f"  budget: {budget.summary()} (reservation refunded)")
+        return 2
     elapsed = (datetime.now(timezone.utc) - started).total_seconds()
 
     _report(call)

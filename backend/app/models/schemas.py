@@ -333,6 +333,28 @@ class ApprovalStatus(str, Enum):
     DECLINED = "declined"
 
 
+class PlacementPlan(BaseModel):
+    """The call strategy for one cycle of the loop."""
+
+    cycle: int
+    radius_miles: float
+    queue: list[str] = Field(default_factory=list)
+    rationale: str = ""
+    # facility_id -> why it was filtered out before any call was placed
+    excluded: dict[str, str] = Field(default_factory=dict)
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.queue
+
+
+class RunStatus(str, Enum):
+    RUNNING = "running"
+    AWAITING_APPROVAL = "awaiting_approval"
+    NO_MATCH_FOUND = "no_match_found"
+    APPROVED = "approved"
+
+
 class PlacementProposal(BaseModel):
     """What the agent hands a case manager.
 
@@ -349,3 +371,25 @@ class PlacementProposal(BaseModel):
     packet_path: str | None = None
     status: ApprovalStatus = ApprovalStatus.PENDING
     proposed_at: datetime = Field(default_factory=_now)
+
+
+class PlacementRun(BaseModel):
+    """One end-to-end execution of the placement loop."""
+
+    case_id: str
+    status: RunStatus = RunStatus.RUNNING
+    cycles_used: int = 0
+    calls_placed: int = 0
+    plans: list[PlacementPlan] = Field(default_factory=list)
+    evaluations: list[FacilityEvaluation] = Field(default_factory=list)
+    events: list[AgentEvent] = Field(default_factory=list)
+    proposal: PlacementProposal | None = None
+
+    def evaluation_for(self, facility_id: str) -> FacilityEvaluation | None:
+        return next(
+            (e for e in self.evaluations if e.facility_id == facility_id), None
+        )
+
+    @property
+    def contradictions(self) -> list[Contradiction]:
+        return [c for e in self.evaluations for c in e.contradictions]

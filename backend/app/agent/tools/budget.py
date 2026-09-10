@@ -95,6 +95,28 @@ class CallBudget:
             self._flush()
             return self._state["spent"]
 
+    def release(self, reason: str = "") -> int:
+        """Give back a reservation for a call that was never placed.
+
+        A reservation is taken before dialing so a crash mid-call still counts -
+        the credit was spent either way. But an API-level rejection (unsupported
+        region, invalid recipient, bad schema) happens *before* anything is
+        dialed, so no credit was consumed and the ledger must not charge for it.
+        """
+        with self._lock:
+            if self.spent <= 0:
+                return 0
+            self._state["spent"] = self.spent - 1
+            self._state.setdefault("calls", []).append(
+                {
+                    "op": "release",
+                    "reason": reason,
+                    "at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            self._flush()
+            return self._state["spent"]
+
     def summary(self) -> str:
         return f"{self.spent}/{self._ceiling} live calls used, {self.remaining} remaining"
 

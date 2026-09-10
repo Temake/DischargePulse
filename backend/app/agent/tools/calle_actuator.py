@@ -16,7 +16,12 @@ from typing import Any
 
 from app.agent.tools import cassette
 from app.agent.tools.budget import CallBudget, budget as default_budget
-from app.agent.tools.telephony import build_task_prompt, facility_call_metadata
+from app.agent.tools.telephony import (
+    build_task_prompt,
+    facility_call_metadata,
+    recipient_for,
+    region_for_phone,
+)
 from app.config import settings
 from app.data.synthetic_data import PLACEHOLDER_PHONE
 from app.models.schemas import (
@@ -148,6 +153,13 @@ class CalleActuator:
                 f"you own, or run this facility in replay mode."
             )
 
+        if region_for_phone(facility.phone) is None:
+            raise TelephonyConfigError(
+                f"{facility.phone} is not in CALL-E's coverage table, so the "
+                f"dial would be rejected as unsupported_region. See "
+                f"https://docs.heycall-e.com/regions"
+            )
+
         task = objective or build_task_prompt(patient, facility)
 
         # Reserved before the dial: a call that crashes mid-flight still spent
@@ -168,12 +180,16 @@ class CalleActuator:
             call = await asyncio.to_thread(
                 self._client.calls.create_and_wait,
                 task=task,
-                recipients=[{"phones": [facility.phone], "region": "US", "locale": "en-US"}],
+                recipients=[recipient_for(facility.phone)],
                 result_schema=result_schema,
                 metadata=facility_call_metadata(facility, patient),
             )
         except Exception as exc:  # noqa: BLE001 - surface any SDK/API failure
             log.exception("CALL-E call to %s failed", facility.name)
+            if type(exc).__name__ == "CalleAPIError":
+                # The API refused the request, so no call was placed and no
+                # credit was consumed. Refund the reservation.
+                self._budget.release(reason=f"{facility.facility_id}: {exc}")
             return CallObservation(
                 facility_id=facility.facility_id,
                 phone=facility.phone,

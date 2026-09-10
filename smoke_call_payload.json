@@ -1,0 +1,56 @@
+{
+  "id": "call_oN-nWVM6d80O4fIVd_RFqw",
+  "object": "call_task",
+  "status": "failed",
+  "task": "Call +17402278194 on behalf of a developer testing an integration. Say you are an automated test call that will take about fifteen seconds. Ask the person two things: first, whether they can hear you clearly, and second, to say a single word of their choice so it can be checked against the transcript. Thank them and end the call.",
+  "recipients": [
+    {
+      "id": "rcp_ae3ea0d1896b8417",
+      "phones": [
+        "+17402278194"
+      ],
+      "locale": "en-US",
+      "region": "US",
+      "status": "failed",
+      "structured_result": null,
+      "summary": "The call did not connect or complete; the recipient may be busy or unavailable, so you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
+      "attempts": [
+        {
+          "id": "att_a98f1346c6c22843",
+          "phone": "+17402278194",
+          "status": "failed",
+          "started_at": "2026-09-10T05:50:13",
+          "completed_at": "2026-09-10T05:50:13",
+          "summary": "The call did not connect or complete; the recipient may be busy or unavailable, so you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
+          "transcript_turns": [],
+          "provider_call_id": "074bc572b7bb4992bd4aff2362a72435",
+          "failure_code": "503",
+          "failure_message": null
+        }
+      ]
+    }
+  ],
+  "structured_result": {
+    "can_hear_clearly": "unknown",
+    "spoken_word": ""
+  },
+  "summary": "The call did not connect or complete; the recipient may be busy or unavailable, so you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
+  "task_completed": false,
+  "completion_confidence": {
+    "score": 0.72,
+    "label": "medium"
+  },
+  "evidence": [
+    "The call ended with failed status and zero seconds of call duration.",
+    "No transcript or speech recognition result was captured.",
+    "The goal required a live response to confirm audio clarity and provide a test word."
+  ],
+  "metadata": {
+    "app": "dischargepulse",
+    "purpose": "smoke-test"
+  },
+  "failure_code": "call_failed",
+  "failure_message": "calling task status=FAILED",
+  "created_at": "2026-09-10T09:47:26.313619Z",
+  "completed_at": "2026-09-10T09:51:01.037795Z"
+}

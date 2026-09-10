@@ -20,6 +20,9 @@ from app.agent.tools.telephony import (
     TRI_STATE,
     build_result_schema,
     build_task_prompt,
+    locale_for_region,
+    recipient_for,
+    region_for_phone,
 )
 from app.data.synthetic_data import (
     FACILITIES,
@@ -207,6 +210,59 @@ class TestTaskPrompt:
 
 
 # ---------------------------------------------------------------------------
+# Region routing
+# ---------------------------------------------------------------------------
+
+
+class TestRegionRouting:
+    @pytest.mark.parametrize(
+        "phone,expected",
+        [
+            ("+15555550100", "US"),
+            ("+2347082118322", "NG"),
+            ("+442071838750", "GB"),
+            ("+919876543210", "IN"),
+            ("+6591234567", "SG"),
+            ("+254712345678", "KE"),
+        ],
+    )
+    def test_region_inferred_from_calling_code(self, phone, expected):
+        assert region_for_phone(phone) == expected
+
+    def test_longer_calling_codes_win_over_shorter_ones(self):
+        """+234 must not be read as +2 or shadowed by +1."""
+        assert region_for_phone("+2347082118322") == "NG"
+        assert region_for_phone("+15555550100") == "US"
+
+    def test_uncovered_country_returns_none(self):
+        """+7 (Russia) is not in CALL-E's coverage table."""
+        assert region_for_phone("+79161234567") is None
+
+    def test_non_e164_returns_none(self):
+        assert region_for_phone("07082118322") is None
+
+    def test_locale_defaults_to_english_for_the_region(self):
+        assert locale_for_region("NG") == "en-NG"
+        assert locale_for_region("US") == "en-US"
+
+    def test_locale_respects_non_english_regions(self):
+        assert locale_for_region("JP") == "ja-JP"
+
+    def test_recipient_carries_inferred_routing(self):
+        recipient = recipient_for("+2347082118322")
+
+        assert recipient["phones"] == ["+2347082118322"]
+        assert recipient["region"] == "NG"
+        assert recipient["locale"] == "en-NG"
+
+    def test_recipient_honours_explicit_overrides(self):
+        recipient = recipient_for("+15555550100", region="GB", locale="en-GB")
+
+        assert recipient["region"] == "GB"
+        assert recipient["locale"] == "en-GB"
+
+
+# ---------------------------------------------------------------------------
 # Budget ledger
 # ---------------------------------------------------------------------------
 
@@ -241,6 +297,30 @@ class TestCallBudget:
 
         with pytest.raises(BudgetExhausted):
             b.check()
+
+    def test_release_refunds_a_call_that_never_dialed(self, tmp_path):
+        """An API rejection consumes no credit, so it must not consume budget."""
+        b = CallBudget(path=tmp_path / "ledger.json", ceiling=20)
+        b.reserve("SNF-001", "+2347082118322")
+        assert b.spent == 1
+
+        b.release(reason="unsupported_region")
+        assert b.spent == 0
+        assert b.remaining == 20
+
+    def test_release_cannot_drive_the_ledger_negative(self, tmp_path):
+        b = CallBudget(path=tmp_path / "ledger.json", ceiling=20)
+        b.release(reason="nothing reserved")
+
+        assert b.spent == 0
+
+    def test_release_survives_restart(self, tmp_path):
+        path = tmp_path / "ledger.json"
+        b = CallBudget(path=path, ceiling=20)
+        b.reserve("SNF-001", "+15555550100")
+        b.release(reason="rejected")
+
+        assert CallBudget(path=path, ceiling=20).spent == 0
 
     def test_ledger_records_an_audit_trail(self, tmp_path):
         path = tmp_path / "ledger.json"

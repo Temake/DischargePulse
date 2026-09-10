@@ -25,6 +25,74 @@ TRI_STATE = ["yes", "no", "unknown"]
 NO_SISTER_FACILITY = "none"
 
 
+# ---------------------------------------------------------------------------
+# Region routing
+# ---------------------------------------------------------------------------
+
+# CALL-E only dials supported destinations, and the recipient's `region` drives
+# routing and compliance checks. Sending the wrong one earns an
+# `unsupported_region` rejection, so derive it from the number rather than
+# assuming US.  Source: https://docs.heycall-e.com/regions
+CALLING_CODE_TO_REGION: dict[str, str] = {
+    "971": "AE", "880": "BD", "504": "HN", "968": "OM", "966": "SA",
+    "886": "TW", "380": "UA", "358": "FI", "353": "IE", "264": "NA",
+    "258": "MZ", "254": "KE", "237": "CM", "234": "NG", "233": "GH",
+    "267": "BW", "216": "TN", "972": "IL",
+    "94": "LK", "92": "PK", "90": "TR", "84": "VN", "81": "JP",
+    "66": "TH", "65": "SG", "63": "PH", "62": "ID", "61": "AU",
+    "60": "MY", "55": "BR", "52": "MX", "49": "DE", "48": "PL",
+    "44": "GB", "34": "ES", "33": "FR", "31": "NL", "27": "ZA",
+    "20": "EG", "91": "IN",
+    "1": "US",
+}
+
+# Regions where English is not the primary supported language.
+_NON_ENGLISH_DEFAULT: dict[str, str] = {
+    "TR": "tr-TR",
+    "VN": "vi-VN",
+    "JP": "ja-JP",
+    "FR": "fr-FR",
+    "PL": "pl-PL",
+}
+
+UNSUPPORTED_REGION = None
+
+
+def region_for_phone(phone: str) -> str | None:
+    """Infer the CALL-E region code from an E.164 number.
+
+    Returns None when the calling code is not in CALL-E's coverage table, which
+    is a signal to refuse the dial rather than spend credit on a rejection.
+    """
+    if not phone.startswith("+"):
+        return None
+
+    digits = phone[1:]
+    # Longest prefix wins: +1 must not shadow +234.
+    for length in (3, 2, 1):
+        code = digits[:length]
+        if code in CALLING_CODE_TO_REGION:
+            return CALLING_CODE_TO_REGION[code]
+    return None
+
+
+def locale_for_region(region: str | None) -> str:
+    """Default BCP 47 locale for a region. English unless the region is not."""
+    if not region:
+        return "en-US"
+    return _NON_ENGLISH_DEFAULT.get(region, f"en-{region}")
+
+
+def recipient_for(phone: str, region: str | None = None, locale: str | None = None) -> dict[str, Any]:
+    """Build a CALL-E recipient entry with routing derived from the number."""
+    resolved_region = region or region_for_phone(phone)
+    return {
+        "phones": [phone],
+        "region": resolved_region,
+        "locale": locale or locale_for_region(resolved_region),
+    }
+
+
 @runtime_checkable
 class TelephonyActuator(Protocol):
     """Anything that can turn a facility + objective into an observation."""
