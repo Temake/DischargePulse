@@ -152,6 +152,10 @@ class Facility(BaseModel):
     # Facilities under shared ownership - the agent asks about these on-call
     # and queues them when the primary is full.
     sister_facility_ids: list[str] = Field(default_factory=list)
+    # Scenario for CALL-E's official test line, whose AI agent answers as
+    # itself unless asked to role-play. Used only when this facility's phone
+    # is that test line - never sent to a real facility.
+    roleplay_brief: str | None = None
     synthetic: bool = True
 
     def claim_for(self, code: ConstraintCode) -> DirectoryClaim | None:
@@ -203,6 +207,10 @@ class CallObservation(BaseModel):
 
     # --- provenance ---------------------------------------------------------
     mode: CallMode
+    # True when the call asked CALL-E's test line to role-play an admissions
+    # coordinator from a scenario brief. Records the request, not the outcome:
+    # the transcript shows whether the answering agent actually played along.
+    roleplay_requested: bool = False
     call_id: str | None = None
     provider_call_id: str | None = None
     started_at: datetime | None = None
@@ -275,7 +283,11 @@ class FacilityEvaluation(BaseModel):
     findings: list[ConstraintFinding] = Field(default_factory=list)
     contradictions: list[Contradiction] = Field(default_factory=list)
     disqualifying_codes: list[ConstraintCode] = Field(default_factory=list)
+    # Sister facilities *named on the call* - live evidence from admissions.
     sister_facility_leads: list[str] = Field(default_factory=list)
+    # Sister facilities known only from directory ownership data. A weaker
+    # signal, kept separate so it can never be presented as call evidence.
+    ownership_leads: list[str] = Field(default_factory=list)
     coordinator_name: str | None = None
     callback_number: str | None = None
     fax_number: str | None = None

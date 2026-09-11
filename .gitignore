@@ -6,7 +6,6 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-ARCHITECTURE.md
 IMPLEMENTATION_PLAN.md
 # Env & secrets
 .env

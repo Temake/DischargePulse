@@ -1,0 +1,114 @@
+{
+  "cassette_version": 1,
+  "case_id": "10482",
+  "facility_id": "SNF-001",
+  "recorded_at": "2026-09-11T05:19:26.645109+00:00",
+  "source_mode": "live",
+  "observation": {
+    "facility_id": "SNF-001",
+    "phone": "+12763229632",
+    "mode": "live",
+    "roleplay_requested": true,
+    "call_id": "call_zwE2ppzXImzUx0CNoLVprQ",
+    "provider_call_id": "722d6357dea54614b971d9fcc9e318b4",
+    "started_at": "2026-09-11T05:18:02.911080Z",
+    "completed_at": "2026-09-11T05:18:52.361965Z",
+    "duration_seconds": 49.450885,
+    "outcome": "completed",
+    "structured_result": {
+      "coordinator_name": "",
+      "direct_callback_number": "",
+      "earliest_admission": "",
+      "iv_infusion": "unknown",
+      "iv_infusion_detail": "",
+      "payer_network": "unknown",
+      "payer_network_detail": "",
+      "referral_fax_number": "",
+      "refusal_reason": "The test-line AI said it \"can't role play a specific real admissions coordinator.\"",
+      "sister_facility_name": "none",
+      "staffed_bed": "unknown",
+      "staffed_bed_detail": "",
+      "wound_vac": "unknown",
+      "wound_vac_detail": ""
+    },
+    "summary": "The test line answered, but it declined to role-play the requested admissions coordinator. No facility availability or referral details were collected, so the scenario ended with a refusal rather than a completed availability check.",
+    "task_completed": true,
+    "confidence_score": 0.86,
+    "confidence_label": "high",
+    "evidence": [
+      "A live AI test-line agent answered the call.",
+      "The agent said it could not role-play the requested admissions coordinator.",
+      "The call ended without collecting network, bed, wound VAC, IV antibiotic, coordinator, or referral-contact details."
+    ],
+    "transcript_turns": [
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 1,
+        "speaker": "bot",
+        "text": "this is an automated hospital case-management assistant testing a discharge-planning integration."
+      },
+      {
+        "offset_seconds": 5,
+        "speaker": "bot",
+        "text": "Could you please role-play as Dana,"
+      },
+      {
+        "offset_seconds": 7,
+        "speaker": "bot",
+        "text": "Thanks for your help,"
+      },
+      {
+        "offset_seconds": 9,
+        "speaker": "user",
+        "text": "Thanks for calling. How can I help you today? Hi. I'm hi."
+      },
+      {
+        "offset_seconds": 10,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 11,
+        "speaker": "bot",
+        "text": "this is an automated hospital case-management assistant testing a discharge-planning integration."
+      },
+      {
+        "offset_seconds": 16,
+        "speaker": "bot",
+        "text": "For this test, could you please role-play the admissions coordinator at Bayview Post-Acute Center?"
+      },
+      {
+        "offset_seconds": 35,
+        "speaker": "user",
+        "text": "Hi. I'm I'm call e. An AI voice agent for this hotline, and I can't role play a specific real admissions coordinator. But I can help with general discharge planning or admission style questions."
+      },
+      {
+        "offset_seconds": 36,
+        "speaker": "bot",
+        "text": "Thank you,"
+      },
+      {
+        "offset_seconds": 36,
+        "speaker": "bot",
+        "text": "I appreciate the clarification. Since this is a test for a discharge-planning integration,"
+      },
+      {
+        "offset_seconds": 41,
+        "speaker": "bot",
+        "text": "I'm unable to simulate a specific role. I'll go ahead and close the line now."
+      },
+      {
+        "offset_seconds": 45,
+        "speaker": "bot",
+        "text": "Thank you for your help, bye."
+      }
+    ],
+    "failure_code": null,
+    "failure_message": null,
+    "recorded_at": "2026-09-11T05:19:26.644325Z"
+  }
+}

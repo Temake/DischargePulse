@@ -169,6 +169,15 @@ class TestDemoNarrative:
 
         assert ReplanTrigger.SISTER_FACILITY_LEAD in triggers
 
+    def test_a_spoken_lead_is_labelled_as_call_evidence(self, actuator, patient):
+        run = run_agent(actuator, patient)
+        replan = next(
+            e for e in run.events if e.trigger is ReplanTrigger.SISTER_FACILITY_LEAD
+        )
+
+        assert replan.payload["source"] == "call"
+        assert "named on the call" in replan.message
+
     def test_run_stops_at_the_human_gate(self, actuator, patient):
         """The agent proposes. It never places."""
         run = run_agent(actuator, patient)
@@ -341,3 +350,89 @@ class TestEventStream:
 
         plan = next(e for e in run.events if e.phase is AgentPhase.PLAN)
         assert "SNF-002" in plan.payload["excluded"]
+
+
+# ---------------------------------------------------------------------------
+# Lead provenance
+# ---------------------------------------------------------------------------
+
+
+class TestLeadProvenance:
+    """Regression: a real call to CALL-E's test line answered 'unknown' to
+    everything and named no sister facility, yet the console reported a
+    'sister facility lead from a live call'. Directory ownership data must
+    never be presented as something said on a call."""
+
+    @pytest.fixture
+    def unhelpful_call(self):
+        return ScriptedActuator(
+            {
+                "SNF-001": answers(
+                    payer="unknown",
+                    bed="unknown",
+                    wound_vac="unknown",
+                    iv="unknown",
+                    coordinator="",
+                    fax="",
+                    sister="none",
+                ),
+            }
+        )
+
+    def test_directory_lead_is_labelled_as_directory_data(self, unhelpful_call, patient):
+        run = run_agent(unhelpful_call, patient)
+        replan = next(
+            e for e in run.events if e.trigger is ReplanTrigger.SISTER_FACILITY_LEAD
+        )
+
+        assert replan.payload["source"] == "directory"
+        assert "not confirmed on a call" in replan.message
+        assert "named on the call" not in replan.message
+
+    def test_directory_lead_is_still_followed_as_a_fallback(self, unhelpful_call, patient):
+        run_agent(unhelpful_call, patient)
+
+        assert "SNF-004" in unhelpful_call.calls
+
+    def test_no_event_claims_call_evidence_that_does_not_exist(
+        self, unhelpful_call, patient
+    ):
+        run = run_agent(unhelpful_call, patient)
+
+        assert not any("named on the call" in e.message for e in run.events)
+
+    def test_unanswered_questions_read_as_follow_up_not_failure(
+        self, unhelpful_call, patient
+    ):
+        """'unknown' means nobody would commit - not that the facility said no."""
+        run = run_agent(unhelpful_call, patient)
+        reason = next(
+            e
+            for e in run.events
+            if e.phase is AgentPhase.REASON and e.facility_id == "SNF-001"
+        )
+
+        assert reason.payload["disposition"] == "needs_follow_up"
+        assert "needs follow-up" in reason.message
+        assert "failed" not in reason.message
+        assert "ruled out" not in reason.message
+
+    def test_an_explicit_refusal_reads_as_ruled_out(self, patient):
+        """SNF-002's directory already says no wound VAC and out of network, so
+        refusals matching it are a plain rule-out rather than a contradiction."""
+        from app.agent.reasoning_engine import ReasoningEngine
+        from app.data.synthetic_data import get_facility
+
+        evaluation = ReasoningEngine().evaluate(
+            patient,
+            get_facility("SNF-002"),
+            make_observation(
+                "SNF-002", structured_result=answers(payer="no", wound_vac="no")
+            ),
+        )
+        event = PlacementAgent(ScriptedActuator({}))._reason_event(evaluation, 1)
+
+        assert not evaluation.contradictions
+        assert event.message.endswith(
+            "ruled out - cannot meet payer_network, wound_vac"
+        )

@@ -19,9 +19,14 @@ awaiting approval keeps its socket open so the decision arrives live.
 
 from __future__ import annotations
 
-import asyncio
-
-from fastapi import APIRouter, WebSocket, WebSocketException, status
+import anyio
+from fastapi import (
+    APIRouter,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+    status,
+)
 
 from app.services.run_manager import RunChannel, RunManager, RunNotFound
 
@@ -72,19 +77,32 @@ async def run_stream(websocket: WebSocket, run_id: str) -> None:
             if message["type"] == "websocket.disconnect":
                 return
 
-    pump_task = asyncio.create_task(pump())
-    watch_task = asyncio.create_task(watch_for_disconnect())
+    delivered = False
 
+    # A task group, not bare asyncio tasks: when the server cancels this
+    # handler (client gone, shutdown), cancellation must reach both children.
+    # Tasks created outside the handler's cancel scope get orphaned instead.
     try:
-        done, pending = await asyncio.wait(
-            {pump_task, watch_task}, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
+        async with anyio.create_task_group() as group:
+
+            async def run_pump() -> None:
+                nonlocal delivered
+                try:
+                    await pump()
+                    delivered = True
+                except (WebSocketDisconnect, RuntimeError):
+                    pass  # client vanished mid-send
+                group.cancel_scope.cancel()
+
+            async def run_watch() -> None:
+                await watch_for_disconnect()
+                group.cancel_scope.cancel()
+
+            group.start_soon(run_pump)
+            group.start_soon(run_watch)
     finally:
         channel.unsubscribe(queue)
 
-    if pump_task in done and pump_task.exception() is None:
+    if delivered:
         # The run reached a terminal state and everything has been delivered.
         await websocket.close(code=status.WS_1000_NORMAL_CLOSURE)

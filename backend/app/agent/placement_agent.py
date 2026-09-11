@@ -43,6 +43,7 @@ from app.models.schemas import (
     PlacementRun,
     ReplanTrigger,
     RunStatus,
+    VerificationState,
 )
 
 log = logging.getLogger(__name__)
@@ -154,7 +155,12 @@ class PlacementAgent:
                 return run
 
             # No match this cycle. Decide what to try next.
-            leads = self._collect_leads(evaluations, called)
+            # A sister named on a call beats an ownership link from the
+            # directory; the plan records which one it acted on.
+            leads, source = self._collect_leads(evaluations, called), "call"
+            if not leads:
+                leads = self._collect_leads(evaluations, called, "ownership_leads")
+                source = "directory"
             if leads:
                 pending_plan = self._planner.plan_sister_facilities(
                     patient,
@@ -162,6 +168,7 @@ class PlacementAgent:
                     cycle=cycle + 1,
                     radius_miles=radius,
                     exclude_ids=called,
+                    source=source,
                 )
                 await self._emit(
                     run,
@@ -170,7 +177,7 @@ class PlacementAgent:
                         phase=AgentPhase.REPLAN,
                         message=pending_plan.rationale,
                         trigger=ReplanTrigger.SISTER_FACILITY_LEAD,
-                        payload={"queue": pending_plan.queue},
+                        payload={"queue": pending_plan.queue, "source": source},
                     ),
                 )
                 continue
@@ -263,6 +270,7 @@ class PlacementAgent:
                     facility_id=facility.facility_id,
                     payload={
                         "mode": observation.mode.value,
+                        "roleplay_requested": observation.roleplay_requested,
                         "call_id": observation.call_id,
                         "provider_call_id": observation.provider_call_id,
                         "duration_seconds": observation.duration_seconds,
@@ -295,9 +303,21 @@ class PlacementAgent:
             )
         elif evaluation.disposition is Disposition.UNREACHED:
             message = f"{evaluation.facility_name}: not reached"
+        elif evaluation.disposition is Disposition.NEEDS_FOLLOW_UP:
+            # Nothing was refused - it just never got a straight answer. Saying
+            # "failed" here would tell a case manager the facility said no.
+            unclear = ", ".join(c.value for c in evaluation.disqualifying_codes)
+            message = (
+                f"{evaluation.facility_name}: nothing refused, but could not "
+                f"confirm {unclear} - needs follow-up"
+            )
         else:
-            failed = ", ".join(c.value for c in evaluation.disqualifying_codes)
-            message = f"{evaluation.facility_name}: failed on {failed}"
+            refused = ", ".join(
+                f.code.value
+                for f in evaluation.findings
+                if f.state is VerificationState.EXPLICITLY_UNAVAILABLE
+            )
+            message = f"{evaluation.facility_name}: ruled out - cannot meet {refused}"
 
         return AgentEvent(
             cycle=cycle,
@@ -322,11 +342,14 @@ class PlacementAgent:
     # -- re-planning --------------------------------------------------------
 
     def _collect_leads(
-        self, evaluations: list[FacilityEvaluation], called: set[str]
+        self,
+        evaluations: list[FacilityEvaluation],
+        called: set[str],
+        field: str = "sister_facility_leads",
     ) -> list[str]:
         leads: list[str] = []
         for evaluation in evaluations:
-            for lead in evaluation.sister_facility_leads:
+            for lead in getattr(evaluation, field):
                 if lead not in called and lead not in leads:
                     leads.append(lead)
         return leads

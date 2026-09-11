@@ -1,56 +1,107 @@
 {
-  "id": "call_oN-nWVM6d80O4fIVd_RFqw",
+  "id": "call_4l78uhTdl9Cfv8IaNRi7bA",
   "object": "call_task",
-  "status": "failed",
-  "task": "Call +17402278194 on behalf of a developer testing an integration. Say you are an automated test call that will take about fifteen seconds. Ask the person two things: first, whether they can hear you clearly, and second, to say a single word of their choice so it can be checked against the transcript. Thank them and end the call.",
+  "status": "completed",
+  "task": "Call +12763229632 on behalf of a developer testing an integration. Say you are an automated test call that will take about fifteen seconds. Ask the person two things: first, whether they can hear you clearly, and second, to say a single word of their choice so it can be checked against the transcript. Thank them and end the call.",
   "recipients": [
     {
-      "id": "rcp_ae3ea0d1896b8417",
+      "id": "rcp_7981694b8fc5ae5d",
       "phones": [
-        "+17402278194"
+        "+12763229632"
       ],
       "locale": "en-US",
       "region": "US",
-      "status": "failed",
+      "status": "completed",
       "structured_result": null,
-      "summary": "The call did not connect or complete; the recipient may be busy or unavailable, so you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
+      "summary": "The automated test call completed successfully. The person confirmed they could hear clearly and provided the single word for the transcript check.",
       "attempts": [
         {
-          "id": "att_a98f1346c6c22843",
-          "phone": "+17402278194",
-          "status": "failed",
-          "started_at": "2026-09-10T05:50:13",
-          "completed_at": "2026-09-10T05:50:13",
-          "summary": "The call did not connect or complete; the recipient may be busy or unavailable, so you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
-          "transcript_turns": [],
-          "provider_call_id": "074bc572b7bb4992bd4aff2362a72435",
-          "failure_code": "503",
+          "id": "att_746d84b651d52efa",
+          "phone": "+12763229632",
+          "status": "completed",
+          "started_at": "2026-09-11T04:23:43.788939Z",
+          "completed_at": "2026-09-11T04:24:10.879246Z",
+          "summary": "The automated test call completed successfully. The person confirmed they could hear clearly and provided the single word for the transcript check.",
+          "transcript_turns": [
+            {
+              "offset_seconds": 0,
+              "speaker": "bot",
+              "text": "Hi."
+            },
+            {
+              "offset_seconds": 2,
+              "speaker": "user",
+              "text": "Thanks for calling. How can I help you today?"
+            },
+            {
+              "offset_seconds": 4,
+              "speaker": "bot",
+              "text": "I'm calling for a developer testing an integration;"
+            },
+            {
+              "offset_seconds": 6,
+              "speaker": "bot",
+              "text": "this is an automated test call that should take about fifteen seconds."
+            },
+            {
+              "offset_seconds": 10,
+              "speaker": "bot",
+              "text": "First, can you hear me clearly?"
+            },
+            {
+              "offset_seconds": 16,
+              "speaker": "user",
+              "text": "Yes. I can hear you clearly."
+            },
+            {
+              "offset_seconds": 17,
+              "speaker": "bot",
+              "text": "Great."
+            },
+            {
+              "offset_seconds": 17,
+              "speaker": "bot",
+              "text": "Could you say a single word of your choice?"
+            },
+            {
+              "offset_seconds": 22,
+              "speaker": "user",
+              "text": "Test."
+            },
+            {
+              "offset_seconds": 23,
+              "speaker": "bot",
+              "text": "Thank you, bye."
+            }
+          ],
+          "provider_call_id": "45d2ba81dd314400864e11074aa21241",
+          "failure_code": null,
           "failure_message": null
         }
       ]
     }
   ],
   "structured_result": {
-    "can_hear_clearly": "unknown",
-    "spoken_word": ""
+    "can_hear_clearly": "yes",
+    "spoken_word": "Test"
   },
-  "summary": "The call did not connect or complete; the recipient may be busy or unavailable, so you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
-  "task_completed": false,
+  "summary": "The automated test call completed successfully. The person confirmed they could hear clearly and provided the single word for the transcript check.",
+  "task_completed": true,
   "completion_confidence": {
-    "score": 0.72,
-    "label": "medium"
+    "score": 0.96,
+    "label": "high"
   },
   "evidence": [
-    "The call ended with failed status and zero seconds of call duration.",
-    "No transcript or speech recognition result was captured.",
-    "The goal required a live response to confirm audio clarity and provide a test word."
+    "The person confirmed they could hear the call clearly.",
+    "They provided a single word for the transcript check.",
+    "The bot thanked them and ended the call."
   ],
   "metadata": {
     "app": "dischargepulse",
     "purpose": "smoke-test"
   },
-  "failure_code": "call_failed",
-  "failure_message": "calling task status=FAILED",
-  "created_at": "2026-09-10T09:47:26.313619Z",
-  "completed_at": "2026-09-10T09:51:01.037795Z"
+  "failure_code": null,
+  "failure_message": null,
+  "created_at": "2026-09-11T04:22:53.626656Z",
+  "completed_at": "2026-09-11T04:24:23.515988Z"
 }

@@ -1,0 +1,164 @@
+{
+  "cassette_version": 1,
+  "case_id": "10482",
+  "facility_id": "SNF-001",
+  "recorded_at": "2026-09-11T05:14:18.317629+00:00",
+  "source_mode": "live",
+  "observation": {
+    "facility_id": "SNF-001",
+    "phone": "+12763229632",
+    "mode": "live",
+    "roleplay_requested": true,
+    "call_id": "call_tLnvXJrLGsldlRv-j1RqUA",
+    "provider_call_id": "fed672e140774240825ac8477ef03174",
+    "started_at": "2026-09-11T05:12:17.289892Z",
+    "completed_at": "2026-09-11T05:13:54.172897Z",
+    "duration_seconds": 96.883005,
+    "outcome": "completed",
+    "structured_result": {
+      "coordinator_name": "",
+      "direct_callback_number": "",
+      "earliest_admission": "",
+      "iv_infusion": "unknown",
+      "iv_infusion_detail": "",
+      "payer_network": "unknown",
+      "payer_network_detail": "I don't have that insurance network information, so I can't confirm whether Bayview Post Acute Center is in network with Aetna Medicare Advantage PPO.",
+      "referral_fax_number": "",
+      "refusal_reason": "",
+      "sister_facility_name": "none",
+      "staffed_bed": "unknown",
+      "staffed_bed_detail": "",
+      "wound_vac": "unknown",
+      "wound_vac_detail": ""
+    },
+    "summary": "The call connected to the test hotline, but the skilled nursing availability details were not obtained. The bot did not first ask the hotline agent to role-play the Bayview admissions coordinator, so the agent could not confirm network status, availability, wound VAC capability, IV antibiotics, coordinator name, or referral contact.",
+    "task_completed": true,
+    "confidence_score": 0.88,
+    "confidence_label": "high",
+    "evidence": [
+      "The call reached a live test-line agent rather than real facility staff.",
+      "The agent said they could not confirm the insurance network information.",
+      "The agent could not transfer the call, take a message, or provide an admissions coordinator name."
+    ],
+    "transcript_turns": [
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "Hello,"
+      },
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "this is an automated assistant calling from hospital case management about a skilled nursing referral;"
+      },
+      {
+        "offset_seconds": 3,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 6,
+        "speaker": "bot",
+        "text": "Thanks for picking up."
+      },
+      {
+        "offset_seconds": 8,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 9,
+        "speaker": "bot",
+        "text": "this is an automated assistant calling from hospital case management about a skilled nursing referral."
+      },
+      {
+        "offset_seconds": 10,
+        "speaker": "user",
+        "text": "Thanks for calling. How can I help you today? Thanks for calling. Hi. I'm hi. I"
+      },
+      {
+        "offset_seconds": 10,
+        "speaker": "bot",
+        "text": "I apologize for the confusion."
+      },
+      {
+        "offset_seconds": 12,
+        "speaker": "bot",
+        "text": "I'm calling from hospital case management about a skilled nursing referral for a seventy one year old female patient."
+      },
+      {
+        "offset_seconds": 18,
+        "speaker": "bot",
+        "text": "I was hoping to speak with the admissions coordinator to check on availability."
+      },
+      {
+        "offset_seconds": 28,
+        "speaker": "user",
+        "text": "Hi. I can help with that. What facility or home are you checking availability for?"
+      },
+      {
+        "offset_seconds": 29,
+        "speaker": "bot",
+        "text": "I'm actually calling about a skilled nursing referral for a seventy one year old female patient."
+      },
+      {
+        "offset_seconds": 34,
+        "speaker": "bot",
+        "text": "I was told to contact Bayview Post Acute Center admissions to discuss a potential placement."
+      },
+      {
+        "offset_seconds": 45,
+        "speaker": "user",
+        "text": "Okay. What would you like help with about Bayview post acute center admissions?"
+      },
+      {
+        "offset_seconds": 46,
+        "speaker": "bot",
+        "text": "I need to check several details with the admissions coordinator."
+      },
+      {
+        "offset_seconds": 49,
+        "speaker": "bot",
+        "text": "First, is Bayview Post Acute Center currently in network with Aetna Medicare Advantage PPO?"
+      },
+      {
+        "offset_seconds": 66,
+        "speaker": "user",
+        "text": "I don't have that insurance network information. So I can't confirm whether Bayview Post Acute Center is in network with Aetna Medicare Advantage PPO."
+      },
+      {
+        "offset_seconds": 67,
+        "speaker": "bot",
+        "text": "Understood."
+      },
+      {
+        "offset_seconds": 68,
+        "speaker": "bot",
+        "text": "Could you tell me who the admissions coordinator is that I should be speaking with regarding this referral?"
+      },
+      {
+        "offset_seconds": 87,
+        "speaker": "user",
+        "text": "I'm sorry. I don't have a name for the admissions coordinator. And I can't transfer you or take a message on this test hotline. I'm sorry I can't help further. Thank you for calling. Goodbye."
+      },
+      {
+        "offset_seconds": 88,
+        "speaker": "bot",
+        "text": "Thank you for your time."
+      },
+      {
+        "offset_seconds": 89,
+        "speaker": "bot",
+        "text": "I'll let our case management team know that we couldn't get the needed details from this number."
+      },
+      {
+        "offset_seconds": 94,
+        "speaker": "bot",
+        "text": "Goodbye."
+      }
+    ],
+    "failure_code": null,
+    "failure_message": null,
+    "recorded_at": "2026-09-11T05:14:18.317378Z"
+  }
+}

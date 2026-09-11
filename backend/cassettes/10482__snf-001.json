@@ -1,0 +1,123 @@
+{
+  "cassette_version": 1,
+  "case_id": "10482",
+  "facility_id": "SNF-001",
+  "recorded_at": "2026-09-11T04:30:29.129672+00:00",
+  "source_mode": "live",
+  "observation": {
+    "facility_id": "SNF-001",
+    "phone": "+12763229632",
+    "mode": "live",
+    "call_id": "call_NpvomYa0s80M9iMLV8nVjg",
+    "provider_call_id": "4227630a6ba74c7ab8132f41c167e483",
+    "started_at": "2026-09-11T04:29:04.556129Z",
+    "completed_at": "2026-09-11T04:30:07.046875Z",
+    "duration_seconds": 62.490746,
+    "outcome": "completed",
+    "structured_result": {
+      "coordinator_name": "",
+      "direct_callback_number": "",
+      "earliest_admission": "",
+      "iv_infusion": "unknown",
+      "iv_infusion_detail": "",
+      "payer_network": "unknown",
+      "payer_network_detail": "The AI voice agent said it did not have the facility's network information.",
+      "referral_fax_number": "",
+      "refusal_reason": "",
+      "sister_facility_name": "none",
+      "staffed_bed": "unknown",
+      "staffed_bed_detail": "",
+      "wound_vac": "unknown",
+      "wound_vac_detail": ""
+    },
+    "summary": "The call reached an AI voice agent instead of Bayview Post-Acute Center admissions, so the live availability questions could not be completed. To retry safely, I need a correct admissions or facility phone number for Bayview Post-Acute Center.",
+    "task_completed": true,
+    "confidence_score": 0.9,
+    "confidence_label": "high",
+    "evidence": [
+      "The answering party identified itself as an AI voice agent, not admissions staff.",
+      "The answering party said it could not connect the call to admissions.",
+      "No network, bed availability, wound VAC, IV antibiotic, coordinator, fax, or email details were obtained."
+    ],
+    "transcript_turns": [
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "Hello,"
+      },
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "this is an automated assistant calling from hospital case management about a skilled nursing referral;"
+      },
+      {
+        "offset_seconds": 3,
+        "speaker": "bot",
+        "text": "I'm calling from hospital case management about a skilled nursing referral for a 71-year-old female patient who may need admission within 24 hours."
+      },
+      {
+        "offset_seconds": 5,
+        "speaker": "user",
+        "text": "Thanks for calling. How can I help you today? I'm call e."
+      },
+      {
+        "offset_seconds": 6,
+        "speaker": "bot",
+        "text": "I\u2019m calling about a skilled nursing referral for a 71-year-old female patient."
+      },
+      {
+        "offset_seconds": 10,
+        "speaker": "bot",
+        "text": "Is someone in admissions available to discuss a bed for admission within the next 24 hours?"
+      },
+      {
+        "offset_seconds": 24,
+        "speaker": "user",
+        "text": "I'm call e. I'm an AI voice agent, and I can't connect you to admissions here. But I can help you figure out what to ask next."
+      },
+      {
+        "offset_seconds": 25,
+        "speaker": "bot",
+        "text": "Understood."
+      },
+      {
+        "offset_seconds": 26,
+        "speaker": "bot",
+        "text": "Could you tell me whether Bayview Post-Acute Center is in network with Aetna Medicare Advantage PPO,"
+      },
+      {
+        "offset_seconds": 31,
+        "speaker": "bot",
+        "text": "and if so, please give me a referral fax or secure email and the best number to reach admissions."
+      },
+      {
+        "offset_seconds": 48,
+        "speaker": "user",
+        "text": "I'm sorry. I don't have that facility's network, fax, email, or admissions contact information. If you'd like, I can help you draft the questions to ask them."
+      },
+      {
+        "offset_seconds": 49,
+        "speaker": "bot",
+        "text": "I see."
+      },
+      {
+        "offset_seconds": 50,
+        "speaker": "bot",
+        "text": "Then this call cannot be used to capture the admissions outcome,"
+      },
+      {
+        "offset_seconds": 53,
+        "speaker": "bot",
+        "text": "because no one in admissions is available and I cannot reach the facility through this line."
+      },
+      {
+        "offset_seconds": 58,
+        "speaker": "bot",
+        "text": "Thank you for your help, bye."
+      }
+    ],
+    "failure_code": null,
+    "failure_message": null,
+    "recorded_at": "2026-09-11T04:30:29.129054Z"
+  }
+}

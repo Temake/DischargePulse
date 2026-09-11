@@ -236,10 +236,22 @@ class TestSisterFacilityLeads:
         assert result.sister_facility_leads == []
 
     def test_ownership_links_supply_a_fallback_lead(self, engine, patient):
-        """Even with no name given, SNF-001's ownership link surfaces SNF-004."""
+        """Even with no name given, SNF-001's ownership link surfaces SNF-004 -
+        but as a directory lead, never as something said on the call."""
         result = evaluate(engine, patient, "SNF-001", answers(sister="none"))
 
+        assert result.ownership_leads == ["SNF-004"]
+        assert result.sister_facility_leads == []
+
+    def test_a_spoken_lead_is_not_duplicated_as_an_ownership_lead(
+        self, engine, patient
+    ):
+        result = evaluate(
+            engine, patient, "SNF-001", answers(bed="no", sister="Bayview Peninsula")
+        )
+
         assert result.sister_facility_leads == ["SNF-004"]
+        assert result.ownership_leads == []
 
     def test_a_facility_never_leads_to_itself(self, engine, patient):
         result = evaluate(

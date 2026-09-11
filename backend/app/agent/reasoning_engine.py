@@ -75,6 +75,7 @@ class ReasoningEngine:
 
         disposition = self._disposition(findings)
         score = self._score(patient, facility, findings)
+        spoken_leads = self._sister_leads(facility, result)
 
         return FacilityEvaluation(
             facility_id=facility.facility_id,
@@ -84,7 +85,8 @@ class ReasoningEngine:
             findings=findings,
             contradictions=contradictions,
             disqualifying_codes=disqualifying,
-            sister_facility_leads=self._sister_leads(facility, result),
+            sister_facility_leads=spoken_leads,
+            ownership_leads=self._ownership_leads(facility, spoken_leads),
             coordinator_name=_clean(result.get("coordinator_name")),
             callback_number=_clean(result.get("direct_callback_number")),
             fax_number=_clean(result.get("referral_fax_number")),
@@ -224,22 +226,22 @@ class ReasoningEngine:
     # -- leads --------------------------------------------------------------
 
     def _sister_leads(self, facility: Facility, result: dict) -> list[str]:
-        """Facilities worth calling next, from the call and from ownership data."""
-        leads: list[str] = []
-
+        """Sister facilities named by the person on the call."""
         spoken = (result.get("sister_facility_name") or "").strip()
-        if spoken.lower() not in NO_SISTER_VALUES:
-            resolved = resolve_sister_facility(spoken)
-            if resolved and resolved != facility.facility_id:
-                leads.append(resolved)
+        if spoken.lower() in NO_SISTER_VALUES:
+            return []
+        resolved = resolve_sister_facility(spoken)
+        if resolved and resolved != facility.facility_id:
+            return [resolved]
+        return []
 
-        # Ownership links are a weaker signal than a name given on the call, so
-        # they come second and never displace it.
-        for sister_id in facility.sister_facility_ids:
-            if sister_id not in leads:
-                leads.append(sister_id)
+    def _ownership_leads(self, facility: Facility, spoken: list[str]) -> list[str]:
+        """Sister facilities known only from directory ownership links.
 
-        return leads
+        Kept apart from spoken leads because they are not call evidence - a
+        directory link says who owns a building, not who has a bed tonight.
+        """
+        return [sid for sid in facility.sister_facility_ids if sid not in spoken]
 
     # -- failure ------------------------------------------------------------
 

@@ -438,3 +438,69 @@ class TestCallObservation:
     def test_completed_call_without_extraction_is_not_usable(self, observation):
         """CALL-E returns null structured_result when evidence was too thin."""
         assert not observation.model_copy(update={"structured_result": None}).is_usable
+
+
+# ---------------------------------------------------------------------------
+# Test-line role-play
+# ---------------------------------------------------------------------------
+
+
+class TestRoleplayBrief:
+    """CALL-E's test line answers as itself unless asked to role-play. The brief
+    must reach it - and must never reach any other number."""
+
+    @pytest.fixture
+    def on_test_line(self, facility):
+        from app.agent.tools.telephony import CALLE_TEST_LINE
+
+        return facility.model_copy(update={"phone": CALLE_TEST_LINE})
+
+    def test_brief_is_read_on_the_test_line(self, patient, on_test_line):
+        prompt = build_task_prompt(patient, on_test_line)
+
+        assert "TEST LINE" in prompt
+        assert on_test_line.roleplay_brief in prompt
+
+    def test_brief_never_reaches_a_real_facility_number(self, patient, facility):
+        real = facility.model_copy(update={"phone": "+14155550123"})
+        prompt = build_task_prompt(patient, real)
+
+        assert "TEST LINE" not in prompt
+        assert "role-play" not in prompt
+        assert real.roleplay_brief not in prompt
+
+    def test_test_line_without_a_brief_is_a_plain_call(self, patient, on_test_line):
+        plain = on_test_line.model_copy(update={"roleplay_brief": None})
+
+        assert "TEST LINE" not in build_task_prompt(patient, plain)
+
+    def test_role_play_still_asks_every_question(self, patient, on_test_line):
+        """The brief supplies answers; the agent must still ask for them, or the
+        transcript would not show the facts being confirmed in role."""
+        prompt = build_task_prompt(patient, on_test_line)
+
+        assert "ask every question" in prompt
+        for req in patient.hard_requirements():
+            assert req.ask_as in prompt
+
+    def test_uses_roleplay_requires_both_line_and_brief(self, facility, on_test_line):
+        from app.agent.tools.telephony import uses_roleplay
+
+        assert uses_roleplay(on_test_line)
+        assert not uses_roleplay(facility.model_copy(update={"phone": "+14155550123"}))
+        assert not uses_roleplay(on_test_line.model_copy(update={"roleplay_brief": None}))
+
+    def test_sister_named_in_the_brief_resolves_to_a_facility(self):
+        """If the role-played coordinator repeats the brief's sister name, the
+        agent must be able to act on it."""
+        from app.agent.planner import resolve_sister_facility
+
+        assert resolve_sister_facility("Bayview Post-Acute Peninsula Campus") == "SNF-004"
+
+    def test_replayed_observation_keeps_the_roleplay_flag(self, observation, tmp_path):
+        cassette.record(
+            observation.model_copy(update={"roleplay_requested": True}), "10482", directory=tmp_path
+        )
+        loaded = cassette.load("10482", observation.facility_id, directory=tmp_path)
+
+        assert loaded.roleplay_requested is True

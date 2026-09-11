@@ -139,12 +139,15 @@ class PlacementPlanner:
         cycle: int,
         radius_miles: float,
         exclude_ids: set[str] | None = None,
+        source: str = "call",
     ) -> PlacementPlan:
-        """Queue facilities named on a call, regardless of the current radius.
+        """Queue sister facilities, regardless of the current radius.
 
         A sister facility surfaced by admissions staff is a warm lead - someone
         with direct knowledge said they may have capacity - so it outranks the
-        radius rule that would otherwise exclude it.
+        radius rule that would otherwise exclude it. `source="directory"` marks
+        leads from ownership data alone; the rationale says so, because a
+        directory link must never read as something staff said on a call.
         """
         already_called = exclude_ids or set()
         queue = [
@@ -154,15 +157,21 @@ class PlacementPlanner:
         ]
 
         names = ", ".join(FACILITIES_BY_ID[fid].name for fid in queue)
+        if not queue:
+            rationale = "No new sister facility leads"
+        elif source == "directory":
+            rationale = (
+                f"Directory lists shared ownership with {names} "
+                f"(not confirmed on a call); queuing as a fallback"
+            )
+        else:
+            rationale = f"Sister facility named on the call: {names}"
+
         return PlacementPlan(
             cycle=cycle,
             radius_miles=radius_miles,
             queue=queue,
-            rationale=(
-                f"Sister facility lead from a live call: {names}"
-                if queue
-                else "No new sister facility leads"
-            ),
+            rationale=rationale,
         )
 
 
