@@ -101,6 +101,35 @@ python scripts/record_cassettes.py --case 10482 --execute
 python -m pytest tests/ -q
 ```
 
+### 6. API server
+
+```bash
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Interactive docs at `http://localhost:8000/docs`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Telephony mode, live availability, budget, cassette count |
+| `GET` | `/api/budget` | Live call budget: spent / ceiling / remaining |
+| `GET` | `/api/patients` · `/api/patients/{case_id}` | Synthetic discharge cases |
+| `GET` | `/api/facilities` | Facility directory, nearest first, with a `dialable` flag |
+| `POST` | `/api/runs` | Start a placement run in the background (202) |
+| `GET` | `/api/runs` · `/api/runs/{run_id}` | Run summaries · full live snapshot |
+| `POST` | `/api/runs/{run_id}/approve` · `/decline` | The human-in-the-loop gate |
+| `WS` | `/ws/runs/{run_id}` | Live event stream for one run |
+
+The WebSocket sends `hello` on connect, replays every `event` the client
+missed, then streams live ones, and sends a full `run` snapshot on each state
+change. It closes once the run is terminal; a run awaiting approval stays open
+so the case manager's decision arrives live.
+
+Live runs are guarded server-side: all-live runs must set `max_calls`, no run may
+exceed the remaining budget, hybrid live legs must have a demo receiver, only one
+live run may be in flight, and a live request is refused — never silently
+replayed — when CALL-E credentials are missing.
+
 ---
 
 ## 🔒 Safety & data policy

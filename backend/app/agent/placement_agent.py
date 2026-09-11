@@ -89,8 +89,12 @@ class PlacementAgent:
 
     # -- main loop ----------------------------------------------------------
 
-    async def run(self, patient: PatientCase) -> PlacementRun:
-        run = PlacementRun(case_id=patient.case_id)
+    async def run(
+        self, patient: PatientCase, run: PlacementRun | None = None
+    ) -> PlacementRun:
+        # A caller may pass its own run object and read it while the loop is
+        # still going - the API does this to serve live snapshots.
+        run = run or PlacementRun(case_id=patient.case_id)
 
         radius = float(patient.search_radius_miles)
         called: set[str] = set()
@@ -181,7 +185,7 @@ class PlacementAgent:
                 break
             radius = widened
 
-        return self._finish_without_match(run)
+        return await self._finish_without_match(run)
 
     # -- phases -------------------------------------------------------------
 
@@ -409,9 +413,12 @@ class PlacementAgent:
             ),
         )
 
-    def _finish_without_match(self, run: PlacementRun) -> PlacementRun:
+    async def _finish_without_match(self, run: PlacementRun) -> PlacementRun:
         run.status = RunStatus.NO_MATCH_FOUND
-        run.events.append(
+        # Through _emit, not straight onto run.events: a live console must hear
+        # that the run ended, or it waits on a spinner forever.
+        await self._emit(
+            run,
             AgentEvent(
                 cycle=run.cycles_used,
                 phase=AgentPhase.COMPLETE,
@@ -419,6 +426,6 @@ class PlacementAgent:
                     f"No verified match after {run.calls_placed} call(s). "
                     f"Escalating to the case manager with the full call record."
                 ),
-            )
+            ),
         )
         return run

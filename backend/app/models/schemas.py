@@ -353,6 +353,13 @@ class RunStatus(str, Enum):
     AWAITING_APPROVAL = "awaiting_approval"
     NO_MATCH_FOUND = "no_match_found"
     APPROVED = "approved"
+    DECLINED = "declined"
+    FAILED = "failed"
+
+    @property
+    def is_terminal(self) -> bool:
+        """Nothing further can happen to a run in a terminal state."""
+        return self not in {RunStatus.RUNNING, RunStatus.AWAITING_APPROVAL}
 
 
 class PlacementProposal(BaseModel):
@@ -371,6 +378,10 @@ class PlacementProposal(BaseModel):
     packet_path: str | None = None
     status: ApprovalStatus = ApprovalStatus.PENDING
     proposed_at: datetime = Field(default_factory=_now)
+    # Who made the human-in-the-loop decision, and when. Recorded for audit.
+    decided_by: str | None = None
+    decided_at: datetime | None = None
+    decision_note: str | None = None
 
 
 class PlacementRun(BaseModel):
@@ -384,6 +395,7 @@ class PlacementRun(BaseModel):
     evaluations: list[FacilityEvaluation] = Field(default_factory=list)
     events: list[AgentEvent] = Field(default_factory=list)
     proposal: PlacementProposal | None = None
+    error: str | None = None
 
     def evaluation_for(self, facility_id: str) -> FacilityEvaluation | None:
         return next(

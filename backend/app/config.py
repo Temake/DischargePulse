@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     demo_phone_primary: str | None = None
     demo_phone_secondary: str | None = None
 
+    # Browser origins allowed to call the API. Defaults cover the Vite dev
+    # server; set CORS_ORIGINS as a JSON list to override.
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
     cassette_dir: Path = BACKEND_ROOT / "cassettes"
     artifact_dir: Path = BACKEND_ROOT / "artifacts"
     budget_ledger_path: Path = BACKEND_ROOT / ".call_budget.json"
