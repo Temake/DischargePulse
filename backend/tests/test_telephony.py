@@ -491,3 +491,64 @@ class TestStandInLines:
         loaded = cassette.load("10482", observation.facility_id, directory=tmp_path)
 
         assert loaded.stand_in_line is True
+
+
+# ---------------------------------------------------------------------------
+# Phone-number masking
+# ---------------------------------------------------------------------------
+
+
+class TestPhoneMasking:
+    """Numbers are masked in everything serialized or logged, but the in-memory
+    model keeps the full number because it is needed to dial."""
+
+    def test_mask_format_keeps_only_a_prefix_and_suffix(self):
+        from app.models.schemas import mask_phone
+
+        assert mask_phone("+15555550100") == "+15******100"
+        assert mask_phone("+2340000000000") == "+23********000"
+        assert mask_phone("") == ""
+        assert mask_phone(None) is None
+
+    def test_facility_json_is_masked_but_the_model_is_not(self, facility):
+        dialable = facility.model_copy(update={"phone": "+15555550100"})
+
+        assert dialable.phone == "+15555550100"
+        assert dialable.model_dump(mode="json")["phone"] == "+15******100"
+        assert "+15555550100" not in dialable.model_dump_json()
+
+    def test_observation_json_is_masked(self, observation):
+        assert "+15555550100" not in observation.model_dump_json()
+
+    def test_recorded_cassettes_never_store_the_full_number(self, observation, tmp_path):
+        path = cassette.record(observation, "10482", directory=tmp_path)
+
+        assert "+15555550100" not in path.read_text(encoding="utf-8")
+
+    def test_budget_ledger_masks_the_number(self, tmp_path):
+        ledger = CallBudget(path=tmp_path / "ledger.json", ceiling=5)
+        ledger.reserve("SNF-001", "+15555550100")
+
+        assert "+15555550100" not in (tmp_path / "ledger.json").read_text(encoding="utf-8")
+
+    def test_the_dial_still_receives_the_full_number(self, patient, facility, tmp_path):
+        """Masking must never reach the request that actually places the call."""
+        from app.agent.tools.calle_actuator import CalleActuator
+
+        sent = {}
+
+        def create_and_wait(**kwargs):
+            sent.update(kwargs)
+            return {"id": "call_x", "status": "completed", "structured_result": None, "recipients": []}
+
+        actuator = CalleActuator(
+            api_key="test-key",
+            budget=CallBudget(path=tmp_path / "ledger.json", ceiling=5),
+            record_cassettes=False,
+        )
+        actuator._client.calls.create_and_wait = create_and_wait
+        dialable = facility.model_copy(update={"phone": "+15555550100"})
+
+        asyncio.run(actuator.call_facility(dialable, patient))
+
+        assert sent["recipients"][0]["phones"] == ["+15555550100"]

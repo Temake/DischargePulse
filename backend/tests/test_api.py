@@ -626,3 +626,13 @@ class TestReferralPacketEndpoint:
 
         assert proposal["brief"]
         assert proposal["brief_source"] == "template"  # LLM disabled in tests
+
+
+class TestMaskedNumbersOverHttp:
+    def test_facility_numbers_are_masked_in_the_api(self, client):
+        from app.data.synthetic_data import FACILITIES
+
+        body = client.get("/api/facilities").text
+        for facility in FACILITIES:
+            if facility.phone != "+10000000000":
+                assert facility.phone not in body

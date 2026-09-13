@@ -8,15 +8,31 @@ call and a replayed cassette are always distinguishable downstream.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def mask_phone(phone: str | None) -> str | None:
+    """Mask a phone number for anything user-facing or logged: +14*******876.
+
+    The full number stays on the in-memory model, where it is needed to dial;
+    it is masked whenever a record is serialized to JSON - API responses, the
+    event stream, recorded cassettes and exported snapshots.
+    """
+    if not phone:
+        return phone
+    digits = re.sub(r"\D", "", phone)
+    if len(digits) <= 5:
+        return "+" + "*" * len(digits)
+    return "+" + digits[:2] + "*" * (len(digits) - 5) + digits[-3:]
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +170,10 @@ class Facility(BaseModel):
     sister_facility_ids: list[str] = Field(default_factory=list)
     synthetic: bool = True
 
+    @field_serializer("phone", when_used="json")
+    def _mask_phone(self, phone: str) -> str | None:
+        return mask_phone(phone)
+
     def claim_for(self, code: ConstraintCode) -> DirectoryClaim | None:
         return next((c for c in self.directory_claims if c.code is code), None)
 
@@ -247,6 +267,10 @@ class CallObservation(BaseModel):
     failure_message: str | None = None
 
     recorded_at: datetime = Field(default_factory=_now)
+
+    @field_serializer("phone", when_used="json")
+    def _mask_phone(self, phone: str) -> str | None:
+        return mask_phone(phone)
 
     @property
     def is_usable(self) -> bool:

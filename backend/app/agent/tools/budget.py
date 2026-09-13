@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import settings
+from app.models.schemas import mask_phone
 
 
 class BudgetExhausted(RuntimeError):
@@ -87,7 +88,7 @@ class CallBudget:
                 {
                     "n": self._state["spent"],
                     "facility_id": facility_id,
-                    "phone": phone,
+                    "phone": mask_phone(phone),
                     "note": note,
                     "at": datetime.now(timezone.utc).isoformat(),
                 }

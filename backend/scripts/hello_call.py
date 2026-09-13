@@ -29,6 +29,7 @@ from app.agent.tools.telephony import (  # noqa: E402
     region_for_phone,
 )
 from app.config import settings  # noqa: E402
+from app.models.schemas import mask_phone  # noqa: E402
 
 E164_HINT = "Phone must be E.164, e.g. +15555550100"
 
@@ -81,7 +82,7 @@ def _preflight(phone: str, execute: bool) -> bool:
         ok = False
 
     if phone.startswith("+") and phone[1:].isdigit() and 7 <= len(phone[1:]) <= 15:
-        print(f"  [ok]   Destination {phone}")
+        print(f"  [ok]   Destination {mask_phone(phone)}")
     else:
         print(f"  [FAIL] Bad destination {phone!r}. {E164_HINT}")
         ok = False
@@ -90,7 +91,7 @@ def _preflight(phone: str, execute: bool) -> bool:
     if region:
         print(f"  [ok]   Region {region}, locale {locale_for_region(region)}")
     else:
-        print(f"  [FAIL] {phone} is outside CALL-E's coverage table.")
+        print(f"  [FAIL] {mask_phone(phone)} is outside CALL-E's coverage table.")
         print("         See https://docs.heycall-e.com/regions")
         ok = False
 
@@ -212,7 +213,7 @@ def main() -> int:
             print(" resolved before --execute will dial.)")
         print("\nDRY RUN - nothing dialed. Re-run with --execute to place the call.")
         print("\nTask that would be sent:\n")
-        print(TASK.format(phone=args.to))
+        print(TASK.format(phone=mask_phone(args.to)))
         print("\nresult_schema:\n")
         print(json.dumps(RESULT_SCHEMA, indent=2))
         return 0
@@ -222,7 +223,7 @@ def main() -> int:
     client = CalleClient(api_key=os.environ["CALLE_API_KEY"])
 
     spent = budget.reserve("SMOKE-TEST", args.to, note="hello_call.py")
-    print(f"\nDialing {args.to} ... (live call {spent} of {budget.ceiling})")
+    print(f"\nDialing {mask_phone(args.to)} ... (live call {spent} of {budget.ceiling})")
     print("This blocks until the call reaches a terminal state.\n")
 
     from calle.errors import CalleAPIError

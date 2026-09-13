@@ -33,6 +33,7 @@ from app.models.schemas import (
     PatientCase,
     TranscriptSpeaker,
     TranscriptTurn,
+    mask_phone,
 )
 
 log = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ class CalleActuator:
 
         if region_for_phone(facility.phone) is None:
             raise TelephonyConfigError(
-                f"{facility.phone} is not in CALL-E's coverage table, so the "
+                f"{mask_phone(facility.phone)} is not in CALL-E's coverage table, so the "
                 f"dial would be rejected as unsupported_region. See "
                 f"https://docs.heycall-e.com/regions"
             )
@@ -171,7 +172,7 @@ class CalleActuator:
         log.info(
             "Dialing %s (%s) - live call %s of %s",
             facility.name,
-            facility.phone,
+            mask_phone(facility.phone),
             spent,
             self._budget.ceiling,
         )

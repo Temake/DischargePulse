@@ -32,10 +32,11 @@ from app.data.synthetic_data import (  # noqa: E402
     get_facility,
     get_patient,
 )
+from app.models.schemas import mask_phone  # noqa: E402
 
 
 async def record_one(actuator: CalleActuator, patient, facility) -> None:
-    print(f"\n--- {facility.name} ({facility.facility_id}) -> {facility.phone}")
+    print(f"\n--- {facility.name} ({facility.facility_id}) -> {mask_phone(facility.phone)}")
     observation = await actuator.call_facility(
         facility,
         patient,
@@ -74,7 +75,7 @@ async def main_async(args: argparse.Namespace) -> int:
     for f in dialable:
         existing = cassette.cassette_path(patient.case_id, f.facility_id)
         mark = "overwrite" if existing.exists() else "new"
-        print(f"      - {f.facility_id:<8} {f.name:<42} {f.phone}  [{mark}]")
+        print(f"      - {f.facility_id:<8} {f.name:<42} {mask_phone(f.phone)}  [{mark}]")
     if skipped:
         print(f"  skipped   : {len(skipped)} without a demo receiver number")
         for f in skipped:

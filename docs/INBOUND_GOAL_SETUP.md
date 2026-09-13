@@ -22,7 +22,7 @@ See https://docs.heycall-e.com/goal-runs
 
 ## What you need
 
-**One number is enough: `+1 414-348-1876`.**
+**One number is enough: `+1 555-555-0100 (your CALL-E inbound number)`.**
 
 The demo needs two facility personas, but the two calls never have to happen at
 the same moment. Cassettes are recorded ahead of the demo, so record one
@@ -48,7 +48,7 @@ concurrent sweep, with no re-binding between takes.
 At https://dashboard.heycall-e.com/
 
 1. **Goals** → create an **Inbound Goal**, paste **Goal A** below as its
-   instructions, and **bind** it to `+1 414-348-1876`.
+   instructions, and **bind** it to `+1 555-555-0100 (your CALL-E inbound number)`.
 2. Tell me — I place one call and record the SNF-001 cassette (Dana, the
    contradiction).
 3. Edit that same goal's instructions, replacing them with **Goal B**, and save.

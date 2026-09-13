@@ -2,12 +2,12 @@
   "id": "call_4l78uhTdl9Cfv8IaNRi7bA",
   "object": "call_task",
   "status": "completed",
-  "task": "Call +12763229632 on behalf of a developer testing an integration. Say you are an automated test call that will take about fifteen seconds. Ask the person two things: first, whether they can hear you clearly, and second, to say a single word of their choice so it can be checked against the transcript. Thank them and end the call.",
+  "task": "Call +12******632 on behalf of a developer testing an integration. Say you are an automated test call that will take about fifteen seconds. Ask the person two things: first, whether they can hear you clearly, and second, to say a single word of their choice so it can be checked against the transcript. Thank them and end the call.",
   "recipients": [
     {
       "id": "rcp_7981694b8fc5ae5d",
       "phones": [
-        "+12763229632"
+        "+12******632"
       ],
       "locale": "en-US",
       "region": "US",
@@ -17,7 +17,7 @@
       "attempts": [
         {
           "id": "att_746d84b651d52efa",
-          "phone": "+12763229632",
+          "phone": "+12******632",
           "status": "completed",
           "started_at": "2026-09-11T04:23:43.788939Z",
           "completed_at": "2026-09-11T04:24:10.879246Z",
