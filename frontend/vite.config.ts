@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 
 // The FastAPI backend (backend/app/main.py) runs on :8000. Proxying keeps the
@@ -10,6 +11,9 @@ const BACKEND = 'http://localhost:8000'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   server: {
     port: 5173,
     proxy: {

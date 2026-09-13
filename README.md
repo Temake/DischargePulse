@@ -209,3 +209,9 @@ missing.
 * **Stand-in line audio.** The configured facility stand-in currently answers with no audio, so real-call demos use simulated attendant answers (labelled).
 * **No referral transmission.** The referral packet is generated and downloadable, but e-fax dispatch and transport coordination are not implemented. The packet says so.
 * **In-memory runs.** Run history lives in memory; restarting the backend clears it. Recorded cassettes and generated packets persist on disk.
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE) © 2026 Teminioluwa Adekoya

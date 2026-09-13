@@ -38,7 +38,12 @@ export type Disposition =
   | 'needs_follow_up'
   | 'unreached'
 
-export type CallMode = 'live' | 'replay'
+/** live: real CALL-E call. replay: recorded call. scripted: no call placed. */
+export type CallMode = 'live' | 'replay' | 'scripted'
+
+/** Where a facility's answers came from. Independent of CallMode: a LIVE call
+ * can carry SIMULATED answers when the stand-in line gave none. Badge both. */
+export type AnswersSource = 'call' | 'simulated'
 
 export type CallOutcome = 'completed' | 'failed' | 'canceled' | 'no_answer'
 
@@ -71,10 +76,10 @@ export type RunStatus =
 
 export type ApprovalStatus = 'pending' | 'approved' | 'declined'
 
-export type TelephonyMode = 'live' | 'replay' | 'auto'
+export type TelephonyMode = 'live' | 'replay' | 'auto' | 'simulated' | 'scripted'
 
 /** Label of the actuator a run used. "scripted" appears only in tests. */
-export type TelephonyLabel = 'live' | 'replay' | 'hybrid' | 'scripted' | string
+export type TelephonyLabel = 'live' | 'replay' | 'hybrid' | 'simulated' | 'scripted' | string
 
 // ---------------------------------------------------------------------------
 // Reference data
@@ -126,7 +131,6 @@ export interface Facility {
   accepted_payers: string[]
   directory_claims: DirectoryClaim[]
   sister_facility_ids: string[]
-  roleplay_brief: string | null
   synthetic: boolean
 }
 
@@ -149,7 +153,11 @@ export interface CallObservation {
   facility_id: string
   phone: string
   mode: CallMode
-  roleplay_requested: boolean
+  stand_in_line: boolean
+  answers_source: AnswersSource
+  simulation_note: string | null
+  /** What the call itself extracted, kept when answers were simulated. */
+  call_structured_result: Record<string, unknown> | null
   call_id: string | null
   provider_call_id: string | null
   started_at: string | null
@@ -244,7 +252,10 @@ export interface PlacementRun {
   case_id: string
   status: RunStatus
   cycles_used: number
+  /** Facilities checked, however answered. */
   calls_placed: number
+  /** Real CALL-E calls that spent credit. */
+  live_calls: number
   plans: PlacementPlan[]
   evaluations: FacilityEvaluation[]
   events: AgentEvent[]
@@ -268,6 +279,7 @@ export interface RunSummary {
   status: RunStatus
   telephony: TelephonyLabel
   calls_placed: number
+  live_calls: number
   cycles_used: number
   started_at: string
   finished_at: string | null
