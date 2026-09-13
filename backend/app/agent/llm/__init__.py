@@ -25,9 +25,15 @@ def build_llm_components() -> tuple[TranscriptReviewer | None, CaseManagerBriefe
         return None, CaseManagerBriefer(None)
 
     try:
-        backend = ClaudeBackend(settings.llm_model, settings.llm_timeout_seconds)
-    except Exception as exc:  # noqa: BLE001 - SDK missing or client unconstructable
-        log.warning("LLM review disabled: %s", exc)
+        backend = ClaudeBackend(
+            settings.llm_model,
+            settings.llm_timeout_seconds,
+            provider=settings.llm_provider,
+            aws_region=settings.aws_region,
+            fallback_model=settings.llm_fallback_model,
+        )
+    except Exception as exc:  # noqa: BLE001 - SDK missing, bad provider, no AWS region
+        log.warning("LLM review disabled (%s): %s", type(exc).__name__, exc)
         return None, CaseManagerBriefer(None)
 
     return TranscriptReviewer(backend), CaseManagerBriefer(backend)

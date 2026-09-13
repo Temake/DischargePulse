@@ -79,9 +79,17 @@ At the approval gate Claude also writes a short plain-language brief for the
 case manager. The provenance line at its top — including whether answers were
 simulated — is written by code, not the model.
 
-Both are optional. Without `ANTHROPIC_API_KEY` the review is skipped and
-announced as unavailable, the rule-based agent runs unchanged, and the brief is
-assembled from a template.
+Both run on the Claude API (`LLM_PROVIDER=anthropic`) or on Amazon Bedrock
+(`LLM_PROVIDER=bedrock`, with `AWS_REGION` and a Bedrock API key or AWS
+credentials). The Bedrock path has been verified live with Claude Sonnet 4.5: on
+a call whose answers said "yes" to wound VAC care but whose words added "only
+once our certified nurse is back on Thursday", the reviewer flagged it with that
+verbatim quote, the code accepted the flag, and the facility dropped from
+verified match to needs follow-up. `scripts/llm_smoke.py` repeats that check.
+
+Both are optional. Without credentials the review is skipped and announced as
+unavailable, the rule-based agent runs unchanged, and the brief is assembled from
+a template.
 
 ---
 
@@ -100,7 +108,7 @@ assembled from a template.
 * Python 3.10+ (tested on 3.14)
 * Node.js 18+
 * A CALL-E API key from the [CALL-E dashboard](https://docs.heycall-e.com/authentication) — only needed for `live` or `simulated` runs
-* Optionally, an Anthropic API key for the LLM transcript review and brief
+* Optionally, an Anthropic API key or Amazon Bedrock access for the LLM transcript review and brief
 
 ### 1. Configure
 

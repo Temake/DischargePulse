@@ -6,7 +6,7 @@
 calle-ai==0.7.0
 
 # --- Claude (transcript review + case-manager brief) --------------------
-anthropic>=1.5
+anthropic[bedrock]>=1.5
 
 # --- API layer --------------------------------------------------------------
 fastapi>=0.128

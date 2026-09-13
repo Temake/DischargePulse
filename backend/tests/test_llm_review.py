@@ -342,7 +342,17 @@ class FakeSDK:
     def __init__(self, response):
         self.response = response
         self.kwargs = None
-        self.beta = SimpleNamespace(messages=SimpleNamespace(create=self.create))
+        self.namespace = None
+        self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._beta_create))
+        self.messages = SimpleNamespace(create=self._create)
+
+    async def _beta_create(self, **kwargs):
+        self.namespace = "beta"
+        return await self.create(**kwargs)
+
+    async def _create(self, **kwargs):
+        self.namespace = "messages"
+        return await self.create(**kwargs)
 
     async def create(self, **kwargs):
         self.kwargs = kwargs
@@ -444,3 +454,87 @@ class TestNoCredentials:
         assert run.status is RunStatus.AWAITING_APPROVAL
         assert run.proposal.brief_source == "template"
         assert run.evaluations[0].review.error
+
+
+# ---------------------------------------------------------------------------
+# Claude on Amazon Bedrock
+# ---------------------------------------------------------------------------
+
+
+class TestBedrockProvider:
+    def test_legacy_inference_profile_ids_are_left_untouched(self):
+        from app.agent.llm.claude import bedrock_model_id, bedrock_uses_legacy
+
+        legacy = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        assert bedrock_uses_legacy(legacy)
+        assert bedrock_uses_legacy("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+        assert bedrock_uses_legacy("anthropic.claude-opus-4-6-v1")
+        assert not bedrock_uses_legacy("claude-opus-5")
+        assert not bedrock_uses_legacy("anthropic.claude-opus-5")
+        assert bedrock_model_id(legacy) == legacy
+
+    def test_sonnet_4_5_uses_the_legacy_client_and_standard_messages(self):
+        import anthropic
+
+        model = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        sdk = FakeSDK(sdk_response(model=model))
+        backend = ClaudeBackend(model, 30.0, client=sdk, provider="bedrock")
+        asyncio.run(backend.structured(system="s", prompt="p", schema={"type": "object"}))
+
+        assert sdk.namespace == "messages"
+        assert sdk.kwargs["model"] == model
+        assert "fallbacks" not in sdk.kwargs and "betas" not in sdk.kwargs
+        assert sdk.kwargs["output_config"]["format"]["type"] == "json_schema"
+
+        real = ClaudeBackend(model, 30.0, provider="bedrock", aws_region="us-east-1")
+        assert isinstance(real._client, anthropic.AsyncAnthropicBedrock)
+
+    def test_model_ids_get_the_bedrock_prefix_once(self):
+        from app.agent.llm.claude import bedrock_model_id
+
+        assert bedrock_model_id("claude-opus-5") == "anthropic.claude-opus-5"
+        assert bedrock_model_id("anthropic.claude-opus-5") == "anthropic.claude-opus-5"
+
+    def test_bedrock_requests_omit_server_side_fallbacks(self):
+        """Bedrock rejects the `fallbacks` parameter and its beta header."""
+        sdk = FakeSDK(sdk_response(model="anthropic.claude-opus-5"))
+        backend = ClaudeBackend("claude-opus-5", 30.0, client=sdk, provider="bedrock")
+
+        asyncio.run(backend.structured(system="s", prompt="p", schema={"type": "object"}))
+
+        assert sdk.kwargs["model"] == "anthropic.claude-opus-5"
+        assert "fallbacks" not in sdk.kwargs
+        assert "betas" not in sdk.kwargs
+        assert sdk.kwargs["output_config"]["format"]["type"] == "json_schema"
+
+    def test_first_party_requests_keep_server_side_fallbacks(self):
+        sdk = FakeSDK(sdk_response())
+        ClaudeBackend("claude-opus-5", 30.0, client=sdk, provider="anthropic")
+        backend = ClaudeBackend("claude-opus-5", 30.0, client=sdk)
+
+        asyncio.run(backend.text(system="s", prompt="p"))
+
+        assert sdk.kwargs["fallbacks"] == "default"
+
+    def test_bedrock_client_uses_mantle_with_client_side_fallback(self):
+        import anthropic
+
+        backend = ClaudeBackend(
+            "claude-opus-5", 30.0, provider="bedrock",
+            aws_region="us-east-1", fallback_model="claude-opus-4-8",
+        )
+
+        assert isinstance(backend._client, anthropic.AsyncAnthropicBedrockMantle)
+
+    def test_missing_aws_credentials_get_an_aws_specific_message(self):
+        backend = ClaudeBackend(
+            "claude-opus-5", 30.0, provider="bedrock",
+            client=RaisingSDK(RuntimeError("Could not resolve AWS credentials from session")),
+        )
+
+        with pytest.raises(LLMUnavailable, match="AWS_BEARER_TOKEN_BEDROCK"):
+            asyncio.run(backend.text(system="s", prompt="p"))
+
+    def test_unknown_provider_is_refused(self):
+        with pytest.raises(ValueError, match="bedrock"):
+            ClaudeBackend("claude-opus-5", 30.0, client=FakeSDK(sdk_response()), provider="azure")

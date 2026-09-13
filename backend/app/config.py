@@ -46,8 +46,15 @@ class Settings(BaseSettings):
     # from ANTHROPIC_API_KEY or an `ant auth login` profile. With none available
     # the calls fail, are recorded, and the rule-based agent carries on.
     llm_review_enabled: bool = True
+    # "anthropic" uses the Claude API (ANTHROPIC_API_KEY). "bedrock" uses Claude
+    # on Amazon Bedrock with the standard AWS credential chain and AWS_REGION.
+    llm_provider: str = "anthropic"
     llm_model: str = "claude-opus-5"
+    # Bedrock has no server-side refusal fallback, so a client-side middleware
+    # retries a declined request on this model instead.
+    llm_fallback_model: str = "claude-opus-4-8"
     llm_timeout_seconds: float = 90.0
+    aws_region: str | None = None
 
     # Browser origins allowed to call the API. Defaults cover the Vite dev
     # server; set CORS_ORIGINS as a JSON list to override.
