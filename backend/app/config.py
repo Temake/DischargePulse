@@ -20,6 +20,10 @@ class TelephonyMode(str, Enum):
     LIVE = "live"
     REPLAY = "replay"
     AUTO = "auto"
+    # Real calls; attendant answers simulated and labelled as such.
+    SIMULATED = "simulated"
+    # No calls; scenario answers labelled as scripted. Free, for rehearsals.
+    SCRIPTED = "scripted"
 
 
 class Settings(BaseSettings):
@@ -37,6 +41,13 @@ class Settings(BaseSettings):
 
     demo_phone_primary: str | None = None
     demo_phone_secondary: str | None = None
+
+    # LLM transcript review and case-manager brief (Claude). Credentials come
+    # from ANTHROPIC_API_KEY or an `ant auth login` profile. With none available
+    # the calls fail, are recorded, and the rule-based agent carries on.
+    llm_review_enabled: bool = True
+    llm_model: str = "claude-opus-5"
+    llm_timeout_seconds: float = 90.0
 
     # Browser origins allowed to call the API. Defaults cover the Vite dev
     # server; set CORS_ORIGINS as a JSON list to override.

@@ -23,6 +23,8 @@ import logging
 from typing import Awaitable, Callable
 
 from app.agent.planner import PlacementPlanner
+from app.agent.llm.brief import CaseManagerBriefer
+from app.agent.llm.reviewer import TranscriptReviewer, review_label
 from app.agent.reasoning_engine import ReasoningEngine, rank_evaluations
 from app.agent.tools.telephony import (
     TelephonyActuator,
@@ -30,10 +32,12 @@ from app.agent.tools.telephony import (
     build_task_prompt,
 )
 from app.config import settings
-from app.data.synthetic_data import FACILITIES_BY_ID
+from app.data.synthetic_data import FACILITIES_BY_ID, PLACEHOLDER_PHONE
 from app.models.schemas import (
     AgentEvent,
     AgentPhase,
+    AnswersSource,
+    CallMode,
     CallObservation,
     Disposition,
     FacilityEvaluation,
@@ -63,8 +67,14 @@ class PlacementAgent:
         max_cycles: int = 4,
         max_concurrent_calls: int | None = None,
         max_calls: int | None = None,
+        reviewer: "TranscriptReviewer | None" = None,
+        briefer: "CaseManagerBriefer | None" = None,
     ) -> None:
         self._actuator = actuator
+        # Optional LLM roles. The reviewer can only downgrade findings; the
+        # briefer only summarises. Both are skipped cleanly when absent.
+        self._reviewer = reviewer
+        self._briefer = briefer or CaseManagerBriefer(None)
         self._planner = planner or PlacementPlanner()
         self._engine = engine or ReasoningEngine()
         self._sink = event_sink
@@ -158,6 +168,12 @@ class PlacementAgent:
             # A sister named on a call beats an ownership link from the
             # directory; the plan records which one it acted on.
             leads, source = self._collect_leads(evaluations, called), "call"
+            if leads and all(
+                self._speaker(e) != "the call"
+                for e in evaluations
+                if e.sister_facility_leads
+            ):
+                source = "simulated"
             if not leads:
                 leads = self._collect_leads(evaluations, called, "ownership_leads")
                 source = "directory"
@@ -219,10 +235,7 @@ class PlacementAgent:
             AgentEvent(
                 cycle=cycle,
                 phase=AgentPhase.ACT,
-                message=(
-                    f"Placing {len(facilities)} concurrent call(s): "
-                    f"{', '.join(f.name for f in facilities)}"
-                ),
+                message=self._act_message(facilities),
                 payload={"facility_ids": facility_ids},
             ),
         )
@@ -257,20 +270,20 @@ class PlacementAgent:
                 continue
 
             run.calls_placed += 1
+            if observation.mode is CallMode.LIVE:
+                run.live_calls += 1
             await self._emit(
                 run,
                 AgentEvent(
                     cycle=cycle,
                     phase=AgentPhase.OBSERVE,
-                    message=(
-                        f"{facility.name}: {observation.summary}"
-                        if observation.summary
-                        else f"{facility.name}: {observation.outcome.value}"
-                    ),
+                    message=self._observe_message(facility.name, observation),
                     facility_id=facility.facility_id,
                     payload={
                         "mode": observation.mode.value,
-                        "roleplay_requested": observation.roleplay_requested,
+                        "stand_in_line": observation.stand_in_line,
+                        "answers_source": observation.answers_source.value,
+                        "simulation_note": observation.simulation_note,
                         "call_id": observation.call_id,
                         "provider_call_id": observation.provider_call_id,
                         "duration_seconds": observation.duration_seconds,
@@ -281,10 +294,85 @@ class PlacementAgent:
             )
 
             evaluation = self._engine.evaluate(patient, facility, observation)
-            evaluations.append(evaluation)
             await self._emit(run, self._reason_event(evaluation, cycle))
 
+            if self._reviewer is not None and observation.is_usable:
+                evaluation = await self._reviewer.review(patient, facility, evaluation)
+                if evaluation.review is not None:
+                    await self._emit(run, self._review_event(evaluation, cycle))
+
+            evaluations.append(evaluation)
+
         return evaluations
+
+    @staticmethod
+    def _review_event(evaluation: FacilityEvaluation, cycle: int) -> AgentEvent:
+        review = evaluation.review
+        label = review_label(evaluation)
+        name = evaluation.facility_name
+        accepted = review.accepted_flags
+        rejected = len(review.flags) - len(accepted)
+
+        if review.error:
+            message = f"{name}: {label} unavailable ({review.error}); rule-based result stands"
+        elif accepted:
+            changes = "; ".join(
+                f'{f.code.value} -> {f.to_state.value} ("{f.quote}")' for f in accepted
+            )
+            message = (
+                f"{name}: {label} downgraded {changes}. Now "
+                f"{evaluation.disposition.value.replace('_', ' ')}"
+            )
+        else:
+            message = f"{name}: {label} found nothing the rules missed"
+        if rejected and not review.error:
+            message += f" ({rejected} unsupported flag(s) rejected)"
+
+        return AgentEvent(
+            cycle=cycle,
+            phase=AgentPhase.REASON,
+            message=message,
+            facility_id=evaluation.facility_id,
+            payload={
+                "review": review.model_dump(mode="json"),
+                "disposition": evaluation.disposition.value,
+                "match_score": evaluation.match_score,
+                "answers_source": review.answers_source.value,
+            },
+        )
+
+    def _act_message(self, facilities: list) -> str:
+        names = ", ".join(f.name for f in facilities)
+        label = getattr(self._actuator, "mode_label", "")
+        if label == "scripted":
+            return f"Running {len(facilities)} scripted attendant(s), no calls placed: {names}"
+        if label == "replay":
+            return f"Replaying {len(facilities)} recorded call(s): {names}"
+        if label == "simulated":
+            live = [f for f in facilities if f.phone != PLACEHOLDER_PHONE]
+            text = f"Placing {len(live)} live call(s): {', '.join(f.name for f in live) or 'none'}"
+            if len(live) < len(facilities):
+                text += f"; {len(facilities) - len(live)} with no demo line use a scripted attendant"
+            return text
+        return f"Placing {len(facilities)} concurrent call(s): {names}"
+
+    @staticmethod
+    def _speaker(evaluation: FacilityEvaluation) -> str:
+        """Who a finding came from - a call, or the simulated attendant."""
+        observation = evaluation.observation
+        if observation and observation.answers_source is AnswersSource.SIMULATED:
+            return "the simulated attendant"
+        return "the call"
+
+    @staticmethod
+    def _observe_message(name: str, observation: CallObservation) -> str:
+        # Simulated answers must be named as such in the headline itself, not
+        # only in a payload field a console might forget to render.
+        if observation.answers_source is AnswersSource.SIMULATED:
+            return f"{name}: {observation.simulation_note}"
+        if observation.summary:
+            return f"{name}: {observation.summary}"
+        return f"{name}: {observation.outcome.value}"
 
     def _reason_event(
         self, evaluation: FacilityEvaluation, cycle: int
@@ -293,7 +381,7 @@ class PlacementAgent:
             headline = evaluation.contradictions[0]
             message = (
                 f"{evaluation.facility_name}: directory said "
-                f"'{headline.directory_says}' but the call said "
+                f"'{headline.directory_says}' but {self._speaker(evaluation)} said "
                 f"'{headline.call_says}'"
             )
         elif evaluation.disposition is Disposition.MATCH_VERIFIED:
@@ -333,6 +421,11 @@ class PlacementAgent:
             payload={
                 "disposition": evaluation.disposition.value,
                 "match_score": evaluation.match_score,
+                "answers_source": (
+                    evaluation.observation.answers_source.value
+                    if evaluation.observation
+                    else None
+                ),
                 "contradictions": [
                     c.model_dump(mode="json") for c in evaluation.contradictions
                 ],
@@ -414,12 +507,16 @@ class PlacementAgent:
             ),
         )
 
+        brief, brief_source, brief_model = await self._briefer.write(patient, run, best)
         run.proposal = PlacementProposal(
             case_id=patient.case_id,
             facility_id=best.facility_id,
             facility_name=best.facility_name,
             match_score=best.match_score,
             evaluation=best,
+            brief=brief,
+            brief_source=brief_source,
+            brief_model=brief_model,
         )
         run.status = RunStatus.AWAITING_APPROVAL
 
@@ -429,10 +526,11 @@ class PlacementAgent:
                 cycle=cycle,
                 phase=AgentPhase.AWAITING_APPROVAL,
                 message=(
-                    f"Referral packet drafted for {best.facility_name}. "
-                    f"Case manager approval required before anything is sent."
+                    f"Placement proposed at {best.facility_name}. Case manager "
+                    f"approval required before any referral is sent."
                 ),
                 facility_id=best.facility_id,
+                payload={"brief_source": brief_source},
             ),
         )
 

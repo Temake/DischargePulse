@@ -222,18 +222,6 @@ FACILITIES: list[Facility] = [
             payer_network=True,
         ),
         sister_facility_ids=["SNF-004"],
-        # Contradicts the directory's wound VAC claim and names the sister
-        # campus - the two beats the agent has to react to.
-        roleplay_brief=(
-            "You are Dana, admissions coordinator at Bayview Post-Acute Center. "
-            "You are in network with Aetna Medicare Advantage PPO. You have a "
-            "staffed bed for a female patient and can admit tomorrow morning. "
-            "You can give IV ceftriaxone every 24 hours. You cannot take a wound "
-            "VAC right now: your wound care nurse is out this week and the night "
-            "nurse is not signed off on wound VACs. Your referral fax is "
-            "555-0142. Suggest your sister facility, Bayview Post-Acute Peninsula "
-            "Campus in San Mateo, which may have a wound VAC certified nurse."
-        ),
     ),
     Facility(
         facility_id="SNF-002",
@@ -290,14 +278,6 @@ FACILITIES: list[Facility] = [
             payer_network=True,
         ),
         sister_facility_ids=["SNF-001"],
-        roleplay_brief=(
-            "You are Marcus, admissions coordinator at Bayview Post-Acute "
-            "Peninsula Campus. You are in network with Aetna Medicare Advantage "
-            "PPO. You have a staffed bed for a female patient and can admit "
-            "within 24 hours. You have wound VAC certified nurses on every shift, "
-            "including nights. You can give IV ceftriaxone every 24 hours. Your "
-            "referral fax is 555-0198."
-        ),
     ),
     # --- Wave 2: only reachable after a radius expansion -------------------
     Facility(

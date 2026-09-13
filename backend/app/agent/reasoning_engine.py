@@ -65,7 +65,9 @@ class ReasoningEngine:
 
         result = observation.structured_result or {}
         findings = self._findings(patient, result)
-        contradictions = self._contradictions(facility, findings, result)
+        contradictions = self._contradictions(
+            facility, findings, result, _from_call(observation)
+        )
 
         disqualifying = [
             f.code
@@ -91,6 +93,33 @@ class ReasoningEngine:
             callback_number=_clean(result.get("direct_callback_number")),
             fax_number=_clean(result.get("referral_fax_number")),
             observation=observation,
+        )
+
+    def rederive(
+        self,
+        patient: PatientCase,
+        facility: Facility,
+        evaluation: FacilityEvaluation,
+        findings: list[ConstraintFinding],
+    ) -> FacilityEvaluation:
+        """Recompute disposition, score and contradictions from revised findings.
+
+        Used after the LLM reviewer downgrades a finding, so a reviewed
+        evaluation is scored by exactly the same rules as an unreviewed one.
+        """
+        result = (evaluation.observation.structured_result or {}) if evaluation.observation else {}
+        return evaluation.model_copy(
+            update={
+                "findings": findings,
+                "disposition": self._disposition(findings),
+                "match_score": round(self._score(patient, facility, findings), 1),
+                "contradictions": self._contradictions(
+                    facility, findings, result, _from_call(evaluation.observation)
+                ),
+                "disqualifying_codes": [
+                    f.code for f in findings if f.state is not VerificationState.CONFIRMED
+                ],
+            }
         )
 
     # -- verification -------------------------------------------------------
@@ -140,9 +169,20 @@ class ReasoningEngine:
         facility: Facility,
         findings: list[ConstraintFinding],
         result: dict,
+        from_call: bool = True,
     ) -> list[Contradiction]:
-        """Diff live call intelligence against the static directory record."""
+        """Diff live call intelligence against the static directory record.
+
+        `from_call` is False when the answers were simulated or scripted. The
+        contradiction still stands - the agent acts on it - but the resolution
+        must not claim a call established it.
+        """
         contradictions: list[Contradiction] = []
+        evidence = (
+            "Live call intelligence"
+            if from_call
+            else "A simulated attendant answer (not verified on a call)"
+        )
 
         for finding in findings:
             claim = facility.claim_for(finding.code)
@@ -164,8 +204,8 @@ class ReasoningEngine:
                         call_says=f"{finding.label}: unavailable",
                         quote=quote,
                         resolution=(
-                            "Live call intelligence overrides the directory "
-                            "record. Facility disqualified."
+                            f"{evidence} overrides the directory record. "
+                            f"Facility disqualified."
                         ),
                     )
                 )
@@ -184,7 +224,7 @@ class ReasoningEngine:
                         call_says=f"{finding.label}: available",
                         quote=quote,
                         resolution=(
-                            "Directory record is stale. Facility remains "
+                            f"{evidence} says the directory record is stale. Facility remains "
                             "eligible on this requirement."
                         ),
                     )
@@ -272,6 +312,17 @@ def _rationale(state: VerificationState, label: str) -> str:
     if state is VerificationState.EXPLICITLY_UNAVAILABLE:
         return f"Facility stated it cannot meet {label.lower()}."
     return f"{label} was raised but never confirmed on the call."
+
+
+def _from_call(observation: CallObservation | None) -> bool:
+    """Did these answers come from a real conversation (live or its replay)?"""
+    from app.models.schemas import AnswersSource, CallMode
+
+    return (
+        observation is not None
+        and observation.answers_source is AnswersSource.CALL
+        and observation.mode is not CallMode.SCRIPTED
+    )
 
 
 def rank_evaluations(

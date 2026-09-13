@@ -164,6 +164,8 @@ class PlacementPlanner:
                 f"Directory lists shared ownership with {names} "
                 f"(not confirmed on a call); queuing as a fallback"
             )
+        elif source == "simulated":
+            rationale = f"Sister facility named by the simulated attendant: {names}"
         else:
             rationale = f"Sister facility named on the call: {names}"
 
