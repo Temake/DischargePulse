@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.agent.tools import cassette
@@ -58,6 +59,7 @@ class RunSummary(BaseModel):
     status: str
     telephony: str
     calls_placed: int
+    live_calls: int
     cycles_used: int
     started_at: Any
     finished_at: Any
@@ -72,6 +74,7 @@ class RunSummary(BaseModel):
             status=run.status.value,
             telephony=record.telephony,
             calls_placed=run.calls_placed,
+            live_calls=run.live_calls,
             cycles_used=run.cycles_used,
             started_at=record.started_at,
             finished_at=record.finished_at,
@@ -163,6 +166,20 @@ async def list_runs(manager: RunManager = Depends(get_manager)) -> list[RunSumma
 @router.get("/runs/{run_id}", response_model=RunRecord)
 async def get_run(run_id: str, manager: RunManager = Depends(get_manager)) -> RunRecord:
     return manager.get(run_id)
+
+
+@router.get(
+    "/runs/{run_id}/packet",
+    response_class=FileResponse,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+async def get_packet(run_id: str, manager: RunManager = Depends(get_manager)) -> FileResponse:
+    """The referral packet PDF. Drafted when the run reaches the human gate and
+    regenerated with the decision once a case manager approves or declines."""
+    path = manager.packet_file(run_id)
+    if path is None:
+        raise RunNotFound(f"referral packet for {run_id}")
+    return FileResponse(path, media_type="application/pdf", filename=f"referral-{run_id}.pdf")
 
 
 @router.post("/runs/{run_id}/approve", response_model=RunRecord)

@@ -152,10 +152,6 @@ class Facility(BaseModel):
     # Facilities under shared ownership - the agent asks about these on-call
     # and queues them when the primary is full.
     sister_facility_ids: list[str] = Field(default_factory=list)
-    # Scenario for CALL-E's official test line, whose AI agent answers as
-    # itself unless asked to role-play. Used only when this facility's phone
-    # is that test line - never sent to a real facility.
-    roleplay_brief: str | None = None
     synthetic: bool = True
 
     def claim_for(self, code: ConstraintCode) -> DirectoryClaim | None:
@@ -172,6 +168,20 @@ class CallMode(str, Enum):
 
     LIVE = "live"
     REPLAY = "replay"
+    # No call was placed - answers came from a scenario, not a telephone.
+    SCRIPTED = "scripted"
+
+
+class AnswersSource(str, Enum):
+    """Where the facility's answers in an observation came from.
+
+    Independent of `CallMode`: a call can be genuinely LIVE (real dial, real
+    call id, real credit spent) while its answers are SIMULATED because the
+    stand-in answering line produced no usable audio. The console badges both.
+    """
+
+    CALL = "call"
+    SIMULATED = "simulated"
 
 
 class TranscriptSpeaker(str, Enum):
@@ -207,10 +217,16 @@ class CallObservation(BaseModel):
 
     # --- provenance ---------------------------------------------------------
     mode: CallMode
-    # True when the call asked CALL-E's test line to role-play an admissions
-    # coordinator from a scenario brief. Records the request, not the outcome:
-    # the transcript shows whether the answering agent actually played along.
-    roleplay_requested: bool = False
+    # True when the number dialed was one of our stand-in answering lines - a
+    # CALL-E Inbound Goal scripted as an admissions coordinator - rather than a
+    # real facility. The outbound call itself is unmodified either way.
+    stand_in_line: bool = False
+    # Whether the answers below were extracted from the call or simulated. When
+    # simulated, `call_structured_result` keeps what the call really extracted
+    # and `simulation_note` says why answers were supplied.
+    answers_source: AnswersSource = AnswersSource.CALL
+    simulation_note: str | None = None
+    call_structured_result: dict[str, Any] | None = None
     call_id: str | None = None
     provider_call_id: str | None = None
     started_at: datetime | None = None
@@ -265,7 +281,46 @@ class Contradiction(BaseModel):
     directory_says: str
     call_says: str
     quote: str | None = None
-    resolution: str = "Live call intelligence overrides directory record."
+    resolution: str = ""
+
+
+class ReviewFlag(BaseModel):
+    """One concern the LLM transcript reviewer raised about a finding.
+
+    The reviewer may only make the agent more cautious. A flag is applied only
+    when it downgrades a state AND quotes the facility's own words verbatim;
+    every other flag is kept with `accepted = False` and the reason it was
+    rejected, so the review stays auditable either way.
+    """
+
+    # None when the model named something that is not a known requirement or
+    # state - recorded as-is in `rejection_reason` rather than coerced.
+    code: ConstraintCode | None = None
+    from_state: VerificationState | None = None
+    to_state: VerificationState | None = None
+    quote: str
+    # Where the quote was found: "transcript", "call answers" or
+    # "simulated answers". Empty when it was not found at all.
+    quote_source: str = ""
+    reason: str
+    accepted: bool
+    rejection_reason: str | None = None
+
+
+class LLMReview(BaseModel):
+    """The outcome of one LLM transcript review."""
+
+    model: str
+    answers_source: AnswersSource
+    flags: list[ReviewFlag] = Field(default_factory=list)
+    # Set when the review could not run (auth, network, refusal, bad output).
+    # A failed review leaves the rule-based evaluation untouched.
+    error: str | None = None
+    reviewed_at: datetime = Field(default_factory=_now)
+
+    @property
+    def accepted_flags(self) -> list[ReviewFlag]:
+        return [f for f in self.flags if f.accepted]
 
 
 class Disposition(str, Enum):
@@ -292,6 +347,9 @@ class FacilityEvaluation(BaseModel):
     callback_number: str | None = None
     fax_number: str | None = None
     observation: CallObservation | None = None
+    # LLM transcript review, when one ran. Accepted flags are already
+    # reflected in `findings` and the disposition above.
+    review: LLMReview | None = None
 
     @property
     def is_placeable(self) -> bool:
@@ -390,6 +448,14 @@ class PlacementProposal(BaseModel):
     packet_path: str | None = None
     status: ApprovalStatus = ApprovalStatus.PENDING
     proposed_at: datetime = Field(default_factory=_now)
+    # Plain-language summary for the case manager. `brief_source` is "llm"
+    # when Claude wrote it, "template" when it was assembled from the
+    # evaluation because no model was available.
+    brief: str | None = None
+    brief_source: str | None = None
+    brief_model: str | None = None
+    # Why the referral packet could not be generated, if it failed.
+    packet_error: str | None = None
     # Who made the human-in-the-loop decision, and when. Recorded for audit.
     decided_by: str | None = None
     decided_at: datetime | None = None
@@ -402,7 +468,10 @@ class PlacementRun(BaseModel):
     case_id: str
     status: RunStatus = RunStatus.RUNNING
     cycles_used: int = 0
+    # Facilities checked this run, however their answers were obtained.
     calls_placed: int = 0
+    # Of those, how many were real CALL-E calls (mode LIVE) that spent credit.
+    live_calls: int = 0
     plans: list[PlacementPlan] = Field(default_factory=list)
     evaluations: list[FacilityEvaluation] = Field(default_factory=list)
     events: list[AgentEvent] = Field(default_factory=list)

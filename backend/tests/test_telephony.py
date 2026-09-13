@@ -16,10 +16,12 @@ from app.agent.tools import cassette
 from app.agent.tools.budget import BudgetExhausted, CallBudget
 from app.agent.tools.replay_actuator import ReplayActuator
 from app.agent.tools.telephony import (
+    CALLE_DEMO_HOTLINE,
     NO_SISTER_FACILITY,
     TRI_STATE,
     build_result_schema,
     build_task_prompt,
+    is_stand_in_line,
     locale_for_region,
     recipient_for,
     region_for_phone,
@@ -219,11 +221,11 @@ class TestRegionRouting:
         "phone,expected",
         [
             ("+15555550100", "US"),
-            ("+2347082118322", "NG"),
-            ("+442071838750", "GB"),
-            ("+919876543210", "IN"),
-            ("+6591234567", "SG"),
-            ("+254712345678", "KE"),
+            ("+2340000000000", "NG"),
+            ("+442079460000", "GB"),
+            ("+910000000000", "IN"),
+            ("+6500000000", "SG"),
+            ("+254000000000", "KE"),
         ],
     )
     def test_region_inferred_from_calling_code(self, phone, expected):
@@ -231,7 +233,7 @@ class TestRegionRouting:
 
     def test_longer_calling_codes_win_over_shorter_ones(self):
         """+234 must not be read as +2 or shadowed by +1."""
-        assert region_for_phone("+2347082118322") == "NG"
+        assert region_for_phone("+2340000000000") == "NG"
         assert region_for_phone("+15555550100") == "US"
 
     def test_uncovered_country_returns_none(self):
@@ -249,9 +251,9 @@ class TestRegionRouting:
         assert locale_for_region("JP") == "ja-JP"
 
     def test_recipient_carries_inferred_routing(self):
-        recipient = recipient_for("+2347082118322")
+        recipient = recipient_for("+2340000000000")
 
-        assert recipient["phones"] == ["+2347082118322"]
+        assert recipient["phones"] == ["+2340000000000"]
         assert recipient["region"] == "NG"
         assert recipient["locale"] == "en-NG"
 
@@ -301,7 +303,7 @@ class TestCallBudget:
     def test_release_refunds_a_call_that_never_dialed(self, tmp_path):
         """An API rejection consumes no credit, so it must not consume budget."""
         b = CallBudget(path=tmp_path / "ledger.json", ceiling=20)
-        b.reserve("SNF-001", "+2347082118322")
+        b.reserve("SNF-001", "+2340000000000")
         assert b.spent == 1
 
         b.release(reason="unsupported_region")
@@ -445,62 +447,47 @@ class TestCallObservation:
 # ---------------------------------------------------------------------------
 
 
-class TestRoleplayBrief:
-    """CALL-E's test line answers as itself unless asked to role-play. The brief
-    must reach it - and must never reach any other number."""
+class TestStandInLines:
+    """The demo dials stand-in answering lines, never real facilities. The
+    outbound prompt is identical either way - the scripted persona lives in a
+    CALL-E Inbound Goal on the answering side - so the only thing to carry is
+    the disclosure that the facility side was scripted."""
 
-    @pytest.fixture
-    def on_test_line(self, facility):
-        from app.agent.tools.telephony import CALLE_TEST_LINE
+    def test_configured_demo_numbers_are_stand_ins(self):
+        from app.config import settings
 
-        return facility.model_copy(update={"phone": CALLE_TEST_LINE})
+        if settings.demo_phone_primary:
+            assert is_stand_in_line(settings.demo_phone_primary)
 
-    def test_brief_is_read_on_the_test_line(self, patient, on_test_line):
-        prompt = build_task_prompt(patient, on_test_line)
+    def test_calle_demo_hotline_is_a_stand_in(self):
+        assert is_stand_in_line(CALLE_DEMO_HOTLINE)
 
-        assert "TEST LINE" in prompt
-        assert on_test_line.roleplay_brief in prompt
+    def test_an_unrelated_number_is_not_a_stand_in(self):
+        assert not is_stand_in_line("+14155550123")
 
-    def test_brief_never_reaches_a_real_facility_number(self, patient, facility):
-        real = facility.model_copy(update={"phone": "+14155550123"})
-        prompt = build_task_prompt(patient, real)
+    def test_blank_number_is_not_a_stand_in(self):
+        assert not is_stand_in_line("")
 
-        assert "TEST LINE" not in prompt
-        assert "role-play" not in prompt
-        assert real.roleplay_brief not in prompt
+    def test_prompt_carries_no_scripted_answers(self, patient, facility):
+        """Nothing in the outbound prompt tells the other end what to say."""
+        prompt = build_task_prompt(patient, facility)
 
-    def test_test_line_without_a_brief_is_a_plain_call(self, patient, on_test_line):
-        plain = on_test_line.model_copy(update={"roleplay_brief": None})
+        for banned in ["role-play", "roleplay", "pretend", "imaginary", "made-up"]:
+            assert banned not in prompt.lower()
 
-        assert "TEST LINE" not in build_task_prompt(patient, plain)
+    def test_prompt_confirms_the_facility_reached(self, patient, facility):
+        """Names the facility, so a wrong-number call is caught - and a stand-in
+        line knows which persona is wanted."""
+        prompt = build_task_prompt(patient, facility)
 
-    def test_role_play_still_asks_every_question(self, patient, on_test_line):
-        """The brief supplies answers; the agent must still ask for them, or the
-        transcript would not show the facts being confirmed in role."""
-        prompt = build_task_prompt(patient, on_test_line)
+        assert f"confirm you have reached {facility.name}" in prompt
 
-        assert "ask every question" in prompt
-        for req in patient.hard_requirements():
-            assert req.ask_as in prompt
-
-    def test_uses_roleplay_requires_both_line_and_brief(self, facility, on_test_line):
-        from app.agent.tools.telephony import uses_roleplay
-
-        assert uses_roleplay(on_test_line)
-        assert not uses_roleplay(facility.model_copy(update={"phone": "+14155550123"}))
-        assert not uses_roleplay(on_test_line.model_copy(update={"roleplay_brief": None}))
-
-    def test_sister_named_in_the_brief_resolves_to_a_facility(self):
-        """If the role-played coordinator repeats the brief's sister name, the
-        agent must be able to act on it."""
-        from app.agent.planner import resolve_sister_facility
-
-        assert resolve_sister_facility("Bayview Post-Acute Peninsula Campus") == "SNF-004"
-
-    def test_replayed_observation_keeps_the_roleplay_flag(self, observation, tmp_path):
+    def test_replayed_observation_keeps_the_stand_in_flag(self, observation, tmp_path):
         cassette.record(
-            observation.model_copy(update={"roleplay_requested": True}), "10482", directory=tmp_path
+            observation.model_copy(update={"stand_in_line": True}),
+            "10482",
+            directory=tmp_path,
         )
         loaded = cassette.load("10482", observation.facility_id, directory=tmp_path)
 
-        assert loaded.roleplay_requested is True
+        assert loaded.stand_in_line is True

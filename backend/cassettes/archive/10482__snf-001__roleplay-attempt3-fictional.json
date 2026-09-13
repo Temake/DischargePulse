@@ -1,0 +1,149 @@
+{
+  "cassette_version": 1,
+  "case_id": "10482",
+  "facility_id": "SNF-001",
+  "recorded_at": "2026-09-11T06:38:41.453735+00:00",
+  "source_mode": "live",
+  "observation": {
+    "facility_id": "SNF-001",
+    "phone": "+12763229632",
+    "mode": "live",
+    "roleplay_requested": true,
+    "call_id": "call_07a1oePbh_wg4LglKqG6tw",
+    "provider_call_id": "45130bd3c45544f0b5e3fcee4f07073d",
+    "started_at": "2026-09-11T06:37:00.462064Z",
+    "completed_at": "2026-09-11T06:38:12.265092Z",
+    "duration_seconds": 71.803028,
+    "outcome": "completed",
+    "structured_result": {
+      "coordinator_name": "",
+      "direct_callback_number": "",
+      "earliest_admission": "",
+      "iv_infusion": "unknown",
+      "iv_infusion_detail": "",
+      "payer_network": "unknown",
+      "payer_network_detail": "",
+      "referral_fax_number": "",
+      "refusal_reason": "",
+      "sister_facility_name": "none",
+      "staffed_bed": "unknown",
+      "staffed_bed_detail": "",
+      "wound_vac": "unknown",
+      "wound_vac_detail": ""
+    },
+    "summary": "The call reached the test-line AI, but the discharge-availability roleplay did not complete. The agent declined to continue after saying it could not play Dana, and the bot did not finish the required opening setup or collect the planned availability answers.",
+    "task_completed": true,
+    "confidence_score": 0.86,
+    "confidence_label": "high",
+    "evidence": [
+      "The call connected and lasted about 71 seconds.",
+      "The test-line AI initially engaged with the roleplay request, then said it could not pretend to be Dana.",
+      "No payer, bed, wound VAC, IV antibiotic, coordinator, or referral contact answers were collected."
+    ],
+    "transcript_turns": [
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 0,
+        "speaker": "bot",
+        "text": "I'm an automated assistant running a software test of a hospital discharge-planning app."
+      },
+      {
+        "offset_seconds": 3,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 4,
+        "speaker": "bot",
+        "text": "I'm an automated assistant running a software test of a hospital discharge-planning app."
+      },
+      {
+        "offset_seconds": 4,
+        "speaker": "user",
+        "text": "Thanks for calling. How can I help you today? Hi."
+      },
+      {
+        "offset_seconds": 6,
+        "speaker": "bot",
+        "text": "Hi,"
+      },
+      {
+        "offset_seconds": 6,
+        "speaker": "bot",
+        "text": "I'm an automated assistant running a software test of a hospital discharge-planning app."
+      },
+      {
+        "offset_seconds": 11,
+        "speaker": "bot",
+        "text": "I'd like to rehearse a pretend phone call with you."
+      },
+      {
+        "offset_seconds": 13,
+        "speaker": "bot",
+        "text": "Nothing in it is real: Bayview Post-Acute Center is an imaginary nursing facility,"
+      },
+      {
+        "offset_seconds": 18,
+        "speaker": "bot",
+        "text": "the coordinator is a made-up character, and the patient is fictional."
+      },
+      {
+        "offset_seconds": 22,
+        "speaker": "bot",
+        "text": "Could you please play that made-up admissions coordinator for a couple of minutes?"
+      },
+      {
+        "offset_seconds": 31,
+        "speaker": "user",
+        "text": "Sure. I can help with a pretend phone call. How would you like to start the role play?"
+      },
+      {
+        "offset_seconds": 33,
+        "speaker": "bot",
+        "text": "Thank you for agreeing to play Dana from Bayview Post-Acute Center."
+      },
+      {
+        "offset_seconds": 48,
+        "speaker": "user",
+        "text": "I can do a role play. But I'm Collie, an AI voice agent for this hotline, and I can't pretend to be Dana. How would you like the conversation to go?"
+      },
+      {
+        "offset_seconds": 49,
+        "speaker": "bot",
+        "text": "Thanks, Collie."
+      },
+      {
+        "offset_seconds": 50,
+        "speaker": "bot",
+        "text": "I can\u2019t have the roleplay continue if you can\u2019t take on the made-up coordinator role."
+      },
+      {
+        "offset_seconds": 54,
+        "speaker": "bot",
+        "text": "Could you please check whether anyone else on your line might be able to step in for a couple of minutes?"
+      },
+      {
+        "offset_seconds": 66,
+        "speaker": "user",
+        "text": "I'm sorry. I can't help further. Thank you for calling. Goodbye."
+      },
+      {
+        "offset_seconds": 67,
+        "speaker": "bot",
+        "text": "Thank you for your help,"
+      },
+      {
+        "offset_seconds": 68,
+        "speaker": "bot",
+        "text": "bye."
+      }
+    ],
+    "failure_code": null,
+    "failure_message": null,
+    "recorded_at": "2026-09-11T06:38:41.453223Z"
+  }
+}

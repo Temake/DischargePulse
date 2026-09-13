@@ -16,10 +16,12 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from app.agent.llm import build_llm_components
 from app.agent.placement_agent import PlacementAgent
 from app.agent.tools.budget import CallBudget, budget as default_budget
 from app.agent.tools.calle_actuator import TelephonyConfigError
@@ -38,8 +40,13 @@ from app.models.schemas import (
     PlacementRun,
     RunStatus,
 )
+from app.services.referral_service import write_referral_packet
 
 log = logging.getLogger(__name__)
+
+# Actuator labels whose runs place real calls and spend credit. "simulated"
+# counts: its calls are real even though the attendant's answers are not.
+CALL_PLACING_LABELS = frozenset({"live", "hybrid", "simulated"})
 
 
 def _now() -> datetime:
@@ -106,7 +113,7 @@ class RunRecord(BaseModel):
 
     @property
     def spends_live_calls(self) -> bool:
-        return self.telephony in {"live", "hybrid"}
+        return self.telephony in CALL_PLACING_LABELS
 
 
 # ---------------------------------------------------------------------------
@@ -192,8 +199,12 @@ class RunManager:
         self,
         actuator_factory: ActuatorFactory = default_actuator_factory,
         call_budget: CallBudget | None = None,
+        llm_factory: Callable[[], tuple] = build_llm_components,
+        packet_dir: Path | None = None,
     ) -> None:
         self._actuator_factory = actuator_factory
+        self._llm_factory = llm_factory
+        self._packet_dir = packet_dir or settings.artifact_dir / "packets"
         self._budget = call_budget or default_budget
         self._records: dict[str, RunRecord] = {}
         self._channels: dict[str, RunChannel] = {}
@@ -228,7 +239,7 @@ class RunManager:
         A stray click in the console must never be able to drain the budget or
         dial a number nobody is standing by to answer.
         """
-        if telephony not in {"live", "hybrid"}:
+        if telephony not in CALL_PLACING_LABELS:
             return
 
         active = [
@@ -257,8 +268,8 @@ class RunManager:
         else:
             if request.max_calls is None:
                 raise RunRejected(
-                    "All-live runs must set max_calls, so the run has a hard "
-                    "ceiling on the credit it can spend."
+                    "Live and simulated runs must set max_calls, so the run has "
+                    "a hard ceiling on the credit it can spend."
                 )
             worst_case = request.max_calls
 
@@ -284,10 +295,11 @@ class RunManager:
         # build_actuator falls back to replay when live credentials are
         # missing. That is right for a CLI, but a console that asked for live
         # calls must be told, not quietly handed recordings.
-        wants_live = request.mode is TelephonyMode.LIVE or bool(
-            request.live_facility_ids
-        )
-        if wants_live and telephony not in {"live", "hybrid"}:
+        wants_live = request.mode in {
+            TelephonyMode.LIVE,
+            TelephonyMode.SIMULATED,
+        } or bool(request.live_facility_ids)
+        if wants_live and telephony not in CALL_PLACING_LABELS:
             raise RunRejected(
                 "Live telephony was requested but is unavailable - check "
                 "CALLE_API_KEY. Nothing was dialed."
@@ -307,11 +319,14 @@ class RunManager:
         self._records[run_id] = record
         self._channels[run_id] = channel
 
+        reviewer, briefer = self._llm_factory()
         agent = PlacementAgent(
             actuator,
             event_sink=lambda event: channel.publish(event_message(event)),
             max_cycles=request.max_cycles,
             max_calls=request.max_calls,
+            reviewer=reviewer,
+            briefer=briefer,
         )
 
         task = asyncio.create_task(self._execute(record, channel, agent, patient))
@@ -344,7 +359,11 @@ class RunManager:
             record.run.status = RunStatus.FAILED
             record.run.error = f"{type(exc).__name__}: {exc}"
         finally:
-            if record.run.status is not RunStatus.AWAITING_APPROVAL:
+            if record.run.status is RunStatus.AWAITING_APPROVAL:
+                # Drafted before the decision, so the case manager can read
+                # exactly what would be sent.
+                self._write_packet(record)
+            else:
                 record.finished_at = _now()
             channel.publish(run_message(record))
             # A run awaiting approval stays open: connected consoles should
@@ -379,6 +398,7 @@ class RunManager:
 
         run.status = RunStatus.APPROVED if approve else RunStatus.DECLINED
         record.finished_at = _now()
+        self._write_packet(record)  # regenerated with the decision stamped on it
 
         verb = "approved" if approve else "declined"
         event = AgentEvent(
@@ -398,6 +418,36 @@ class RunManager:
         channel.publish(run_message(record))
         channel.close()
         return record
+
+    # -- referral packet ----------------------------------------------------
+
+    def packet_file(self, run_id: str) -> Path | None:
+        """The packet PDF for a run, if one has been written."""
+        proposal = self.get(run_id).run.proposal
+        if proposal is None or not proposal.packet_path:
+            return None
+        path = Path(proposal.packet_path)
+        return path if path.is_file() else None
+
+    def _write_packet(self, record: RunRecord) -> None:
+        run = record.run
+        if run.proposal is None:
+            return
+        try:
+            path = write_referral_packet(
+                run_id=record.run_id,
+                telephony=record.telephony,
+                run=run,
+                patient=get_patient(record.case_id),
+                facility=FACILITIES_BY_ID[run.proposal.facility_id],
+                path=self._packet_dir / f"{record.run_id}.pdf",
+            )
+            run.proposal.packet_path = str(path)
+            run.proposal.packet_error = None
+        except Exception as exc:  # noqa: BLE001 - a packet failure must not sink the run
+            log.exception("Referral packet failed for %s", record.run_id)
+            run.proposal.packet_path = None
+            run.proposal.packet_error = f"{type(exc).__name__}: {exc}"
 
     # -- lifecycle ----------------------------------------------------------
 

@@ -124,6 +124,15 @@ class ScriptedActuator:
         )
 
 
+@pytest.fixture(autouse=True)
+def no_real_llm(monkeypatch):
+    """Tests never reach the Claude API. Tests that exercise the LLM roles
+    inject a fake backend explicitly."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "llm_review_enabled", False)
+
+
 @pytest.fixture
 def patient():
     from app.data.synthetic_data import get_patient

@@ -18,11 +18,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.agent.llm import build_llm_components  # noqa: E402
 from app.agent.placement_agent import PlacementAgent  # noqa: E402
 from app.agent.tools.budget import budget  # noqa: E402
 from app.agent.tools.factory import build_actuator  # noqa: E402
-from app.config import TelephonyMode  # noqa: E402
-from app.data.synthetic_data import get_patient  # noqa: E402
+from app.config import TelephonyMode, settings  # noqa: E402
+from app.data.synthetic_data import get_facility, get_patient  # noqa: E402
+from app.services.referral_service import write_referral_packet  # noqa: E402
 from app.models.schemas import AgentEvent, AgentPhase, RunStatus  # noqa: E402
 
 PHASE_GLYPH = {
@@ -46,11 +48,14 @@ def render(event: AgentEvent) -> None:
         duration = event.payload.get("duration_seconds")
         stamp = f"{duration:.0f}s" if duration else "-"
         print(f"            provenance: {mode.upper()}  {call_id}  {stamp}")
+        if event.payload.get("answers_source") == "simulated":
+            print("            answers   : SIMULATED - not said on the call")
 
     for contradiction in event.payload.get("contradictions", []) or []:
         print(f"            !! CONTRADICTION: {contradiction['label']}")
         print(f"               directory : {contradiction['directory_says']}")
-        print(f"               live call : {contradiction['call_says']}")
+        said_by = "simulated" if event.payload.get("answers_source") == "simulated" else "live call"
+        print(f"               {said_by:<9} : {contradiction['call_says']}")
         if contradiction.get("quote"):
             print(f"               quote     : \"{contradiction['quote']}\"")
 
@@ -77,18 +82,26 @@ async def main_async(args: argparse.Namespace) -> int:
         print(f"  live legs  : {', '.join(args.live)}")
     print("-" * 72)
 
+    if args.no_llm:
+        settings.llm_review_enabled = False
+    reviewer, briefer = build_llm_components()
+    print(f"  llm review : {'on (' + settings.llm_model + ')' if reviewer else 'off'}")
+
     agent = PlacementAgent(
         actuator,
         event_sink=render,
         max_cycles=args.max_cycles,
         max_calls=args.max_calls,
+        reviewer=reviewer,
+        briefer=briefer,
     )
     run = await agent.run(patient)
 
     print("-" * 72)
     print(f"  status       : {run.status.value}")
     print(f"  cycles       : {run.cycles_used}")
-    print(f"  calls placed : {run.calls_placed}")
+    print(f"  facilities   : {run.calls_placed} checked")
+    print(f"  live calls   : {run.live_calls} (real CALL-E calls, credit spent)")
 
     if run.contradictions:
         print(f"  contradictions detected: {len(run.contradictions)}")
@@ -101,6 +114,21 @@ async def main_async(args: argparse.Namespace) -> int:
         print(f"    match score : {p.match_score}")
         print(f"    coordinator : {p.evaluation.coordinator_name or '-'}")
         print(f"    fax         : {p.evaluation.fax_number or '-'}")
+        print()
+        print(f"  CASE MANAGER BRIEF ({p.brief_source}{', ' + p.brief_model if p.brief_model else ''})")
+        for line in (p.brief or "").splitlines():
+            print(f"    {line}")
+        if args.packet:
+            path = write_referral_packet(
+                run_id="cli-run",
+                telephony=actuator.mode_label,
+                run=run,
+                patient=patient,
+                facility=get_facility(p.facility_id),
+                path=Path(args.packet),
+            )
+            print()
+            print(f"  referral packet (DRAFT): {path}")
         print()
         print("    Nothing has been sent. A case manager must approve the")
         print("    referral packet before it leaves this system.")
@@ -125,6 +153,16 @@ def main() -> int:
         "--live",
         action="append",
         help="Facility id to dial live while everything else replays. Repeatable.",
+    )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Skip the Claude transcript review and use the template brief.",
+    )
+    parser.add_argument(
+        "--packet",
+        metavar="PATH",
+        help="Write the draft referral packet PDF here when a placement is proposed.",
     )
     parser.add_argument("--max-cycles", type=int, default=4)
     parser.add_argument(

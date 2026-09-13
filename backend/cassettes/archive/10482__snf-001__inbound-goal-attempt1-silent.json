@@ -2,18 +2,18 @@
   "cassette_version": 1,
   "case_id": "10482",
   "facility_id": "SNF-001",
-  "recorded_at": "2026-09-13T04:14:26.223468+00:00",
+  "recorded_at": "2026-09-12T07:28:59.320580+00:00",
   "source_mode": "live",
   "observation": {
     "facility_id": "SNF-001",
     "phone": "+14143481876",
     "mode": "live",
     "stand_in_line": true,
-    "call_id": "call_8SkIZnzKpq6ZTgnJst4AmQ",
-    "provider_call_id": "930166ee4ff74efb962d79481254cc6b",
-    "started_at": "2026-09-13T04:12:41.230650Z",
-    "completed_at": "2026-09-13T04:14:02.990038Z",
-    "duration_seconds": 81.759388,
+    "call_id": "call_NQcZwgDrsP31utDeZ2VnOQ",
+    "provider_call_id": "7f4d14ff28e74f1385ead597dad00e19",
+    "started_at": "2026-09-12T07:27:20.031491Z",
+    "completed_at": "2026-09-12T07:28:36.952330Z",
+    "duration_seconds": 76.920839,
     "outcome": "completed",
     "structured_result": {
       "coordinator_name": "",
@@ -31,14 +31,14 @@
       "wound_vac": "unknown",
       "wound_vac_detail": ""
     },
-    "summary": "The first call did not reach a live admissions conversation, and the required availability details were not confirmed. The recipient may have been unavailable or the call may have had interference; you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
+    "summary": "The call did not complete: the admissions team was not reached, and no referral availability or contact details were established. The recipient appeared unavailable or the call had interference; you can confirm retrying in about 45 minutes, provide a different retry time, or retry immediately.",
     "task_completed": false,
-    "confidence_score": 0.66,
+    "confidence_score": 0.72,
     "confidence_label": "medium",
     "evidence": [
-      "No admissions coordinator was reached.",
-      "The call did not obtain the required network, bed, wound VAC, IV antibiotic, or referral contact details.",
-      "The call ended without a meaningful facility response."
+      "The bot introduced itself for the skilled nursing referral but did not receive confirmation that it reached Bayview Post-Acute Center.",
+      "No admissions representative was connected and none of the required availability questions were answered.",
+      "The only response indicated call interference and that they would call back later."
     ],
     "transcript_turns": [
       {
@@ -49,45 +49,45 @@
       {
         "offset_seconds": 0,
         "speaker": "bot",
-        "text": "this is an automated assistant calling from hospital case management about a de-identified skilled nursing referral;"
+        "text": "this is an automated assistant calling from hospital case management about a skilled nursing referral."
       },
       {
-        "offset_seconds": 6,
+        "offset_seconds": 5,
         "speaker": "bot",
-        "text": "have I reached Bayview Post-Acute Center?"
+        "text": "Have I reached Bayview Post-Acute Center?"
       },
       {
-        "offset_seconds": 14,
+        "offset_seconds": 13,
         "speaker": "bot",
-        "text": "Okay."
+        "text": "Can you hear me?"
       },
       {
         "offset_seconds": 20,
         "speaker": "bot",
-        "text": "No rush."
+        "text": "I'm here."
       },
       {
         "offset_seconds": 27,
         "speaker": "bot",
-        "text": "I'll hold."
+        "text": "No rush."
       },
       {
-        "offset_seconds": 34,
-        "speaker": "bot",
-        "text": "Take your time."
-      },
-      {
-        "offset_seconds": 40,
-        "speaker": "bot",
-        "text": "I'm here."
-      },
-      {
-        "offset_seconds": 47,
+        "offset_seconds": 33,
         "speaker": "bot",
         "text": "I'll wait."
       },
       {
-        "offset_seconds": 53,
+        "offset_seconds": 39,
+        "speaker": "bot",
+        "text": "Take your time."
+      },
+      {
+        "offset_seconds": 46,
+        "speaker": "bot",
+        "text": "I'm here."
+      },
+      {
+        "offset_seconds": 52,
         "speaker": "bot",
         "text": "Okay."
       },
@@ -97,23 +97,18 @@
         "text": "No rush."
       },
       {
-        "offset_seconds": 66,
+        "offset_seconds": 65,
         "speaker": "bot",
         "text": "I'll hold."
       },
       {
-        "offset_seconds": 72,
-        "speaker": "bot",
-        "text": "Take your time."
-      },
-      {
-        "offset_seconds": 79,
+        "offset_seconds": 74,
         "speaker": "user",
         "text": "I'm sorry. There is signal interference on our call. I'll call you back later. Thanks for waiting."
       }
     ],
     "failure_code": null,
     "failure_message": null,
-    "recorded_at": "2026-09-13T04:14:26.221818Z"
+    "recorded_at": "2026-09-12T07:28:59.320309Z"
   }
 }

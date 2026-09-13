@@ -21,7 +21,7 @@ from app.agent.tools.telephony import (
     facility_call_metadata,
     recipient_for,
     region_for_phone,
-    uses_roleplay,
+    is_stand_in_line,
 )
 from app.config import settings
 from app.data.synthetic_data import PLACEHOLDER_PHONE
@@ -195,7 +195,7 @@ class CalleActuator:
                 facility_id=facility.facility_id,
                 phone=facility.phone,
                 mode=CallMode.LIVE,
-                roleplay_requested=uses_roleplay(facility),
+                stand_in_line=is_stand_in_line(facility.phone),
                 started_at=started,
                 completed_at=datetime.now(timezone.utc),
                 outcome=CallOutcome.FAILED,
@@ -244,7 +244,7 @@ class CalleActuator:
             facility_id=facility.facility_id,
             phone=facility.phone,
             mode=CallMode.LIVE,
-            roleplay_requested=uses_roleplay(facility),
+            stand_in_line=is_stand_in_line(facility.phone),
             call_id=_field(call, "id", "call_id", "callId"),
             provider_call_id=_field(attempt, "provider_call_id", "providerCallId"),
             started_at=started_at,

@@ -71,11 +71,12 @@ def ledger(tmp_path):
 
 
 @pytest.fixture
-def make_client(ledger):
+def make_client(ledger, tmp_path):
     def build(script=DEMO_SCRIPT, factory=None):
         manager = RunManager(
             actuator_factory=factory or scripted_factory(script),
             call_budget=ledger,
+            packet_dir=tmp_path / "packets",
         )
         return TestClient(create_app(run_manager=manager))
 
@@ -525,3 +526,103 @@ class TestRunChannel:
         channel.publish({"n": 1})
 
         assert queue.empty()
+
+
+# ---------------------------------------------------------------------------
+# Simulated-attendant runs place real calls, so they get the live guard rails
+# ---------------------------------------------------------------------------
+
+
+class TestSimulatedRunGuards:
+    def simulated_factory(self, request):
+        actuator = ScriptedActuator(DEMO_SCRIPT)
+        actuator.mode_label = "simulated"
+        return actuator
+
+    def test_simulated_run_must_set_a_call_ceiling(self, make_client):
+        with make_client(factory=self.simulated_factory) as client:
+            response = client.post("/api/runs", json={"case_id": "10482", "mode": "simulated"})
+
+        assert response.status_code == 422
+        assert "max_calls" in response.json()["detail"]
+
+    def test_simulated_run_is_budget_checked(self, make_client, ledger):
+        for _ in range(19):
+            ledger.reserve("SNF-001", "+15555550100")
+        with make_client(factory=self.simulated_factory) as client:
+            response = client.post(
+                "/api/runs", json={"case_id": "10482", "mode": "simulated", "max_calls": 4}
+            )
+
+        assert response.status_code == 422
+
+    def test_simulated_request_is_refused_when_calls_are_unavailable(self, make_client):
+        """Asking for real calls and quietly getting none would defeat the point."""
+        def fell_back_to_scripted(request):
+            actuator = ScriptedActuator(DEMO_SCRIPT)
+            actuator.mode_label = "scripted"
+            return actuator
+
+        with make_client(factory=fell_back_to_scripted) as client:
+            response = client.post(
+                "/api/runs", json={"case_id": "10482", "mode": "simulated", "max_calls": 4}
+            )
+
+        assert response.status_code == 422
+        assert "unavailable" in response.json()["detail"]
+
+    def test_scripted_runs_need_no_ceiling(self, make_client):
+        def scripted(request):
+            actuator = ScriptedActuator(DEMO_SCRIPT)
+            actuator.mode_label = "scripted"
+            return actuator
+
+        with make_client(factory=scripted) as client:
+            response = client.post("/api/runs", json={"case_id": "10482", "mode": "scripted"})
+
+        assert response.status_code == 202
+
+
+# ---------------------------------------------------------------------------
+# Referral packet and brief over HTTP
+# ---------------------------------------------------------------------------
+
+
+class TestReferralPacketEndpoint:
+    def test_packet_is_drafted_at_the_human_gate(self, client):
+        run_id = start(client)
+        body = wait_for_status(client, run_id, "awaiting_approval")
+
+        assert body["run"]["proposal"]["packet_path"]
+        response = client.get(f"/api/runs/{run_id}/packet")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF")
+
+    def test_approval_regenerates_the_packet(self, client):
+        run_id = start(client)
+        wait_for_status(client, run_id, "awaiting_approval")
+        draft = client.get(f"/api/runs/{run_id}/packet").content
+
+        client.post(f"/api/runs/{run_id}/approve", json={"decided_by": "CM Rivera"})
+        final = client.get(f"/api/runs/{run_id}/packet").content
+
+        assert final.startswith(b"%PDF")
+        assert final != draft
+
+    def test_no_packet_without_a_proposal(self, make_client):
+        with make_client(NO_MATCH_SCRIPT) as client:
+            run_id = start(client)
+            wait_for_status(client, run_id, "no_match_found")
+
+            assert client.get(f"/api/runs/{run_id}/packet").status_code == 404
+
+    def test_unknown_run_packet_is_404(self, client):
+        assert client.get("/api/runs/run_nope/packet").status_code == 404
+
+    def test_proposal_carries_a_brief(self, client):
+        run_id = start(client)
+        proposal = wait_for_status(client, run_id, "awaiting_approval")["run"]["proposal"]
+
+        assert proposal["brief"]
+        assert proposal["brief_source"] == "template"  # LLM disabled in tests

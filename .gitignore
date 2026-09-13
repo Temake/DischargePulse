@@ -11,6 +11,7 @@ IMPLEMENTATION_PLAN.md
 .env
 .env.local
 *.key
+graphify-out/
 
 # Node
 node_modules/
@@ -25,3 +26,6 @@ backend/.call_budget.json
 # OS
 .DS_Store
 Thumbs.db
+
+# MCP client config - holds API keys
+.mcp.json

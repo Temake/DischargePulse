@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from app.config import settings
 from app.models.schemas import (
     CallObservation,
     ConstraintCode,
@@ -24,15 +25,21 @@ TRI_STATE = ["yes", "no", "unknown"]
 
 NO_SISTER_FACILITY = "none"
 
-# CALL-E's official US testing hotline, provided by the hackathon organisers for
-# regions where outbound calling is restricted. An AI voice agent answers it -
-# not facility staff - and it answers as itself unless asked to role-play.
-CALLE_TEST_LINE = "+12763229632"
+# The demo dials stand-in lines, never real facilities: a CALL-E Inbound Goal we
+# configured to answer as an admissions coordinator, or CALL-E's shared demo
+# hotline. Recorded so the console and cassettes can say the facility side was
+# scripted. The outbound prompt is unaffected - it is the production prompt.
+CALLE_DEMO_HOTLINE = "+12763229632"
 
 
-def uses_roleplay(facility: Facility) -> bool:
-    """Whether a call to this facility runs as a role-played test-line call."""
-    return facility.phone == CALLE_TEST_LINE and bool(facility.roleplay_brief)
+def is_stand_in_line(phone: str) -> bool:
+    """True when this number is one of our configured stand-in answerers."""
+    configured = {
+        settings.demo_phone_primary,
+        settings.demo_phone_secondary,
+        CALLE_DEMO_HOTLINE,
+    }
+    return bool(phone) and phone in {n for n in configured if n}
 
 
 # ---------------------------------------------------------------------------
@@ -246,33 +253,6 @@ def build_result_schema(patient: PatientCase) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _opening(facility: Facility, extension_hint: str) -> str:
-    """How the call begins.
-
-    On CALL-E's test line the role-play request *is* the opening, read as an
-    exact line. A first attempt placed it mid-prompt beside the usual "ask for
-    admissions" instruction; the caller followed that one and never asked, so
-    here nothing competes with it. The brief is read aloud, so the recorded
-    transcript itself shows the answering agent was given a scenario.
-    """
-    if not uses_roleplay(facility):
-        return (
-            "Identify yourself at the start as an automated assistant calling "
-            "from hospital case management about a skilled nursing referral, and "
-            f"ask to be connected to admissions. {extension_hint}If a receptionist "
-            "deflects or offers to take a message, politely ask whether anyone in "
-            "admissions is available now, since you need bed availability for a "
-            "discharge today."
-        )
-    return f"""TEST LINE CALL. The number you are dialing is CALL-E's official test line, answered by an AI voice agent rather than {facility.name} staff. Do not ask to be transferred to admissions - the person who answers will play the admissions coordinator once you ask them to.
-
-Your opening, as soon as they answer and before anything else, must be exactly this, read in full:
-
-  "Hi, this is an automated hospital case-management assistant testing a discharge-planning integration. For this test, could you please role-play the admissions coordinator at {facility.name}? Here is your scenario: {facility.roleplay_brief} Is that okay?"
-
-Wait for them to agree. If they decline, thank them and end the call. Once they agree, treat them as the admissions coordinator for the rest of the call and ask every question below, one at a time - do not skip a question because the scenario already covered it."""
-
-
 def build_task_prompt(patient: PatientCase, facility: Facility) -> str:
     """Compose the natural-language objective CALL-E runs the conversation on.
 
@@ -301,7 +281,7 @@ def build_task_prompt(patient: PatientCase, facility: Facility) -> str:
 
     return f"""You are an automated hospital case-management assistant calling {facility.name} at {facility.phone} on behalf of a discharge planning team.
 
-{_opening(facility, extension_hint)}
+Identify yourself at the start as an automated assistant calling from hospital case management about a skilled nursing referral, confirm you have reached {facility.name}, and ask to be connected to admissions. {extension_hint}If a receptionist deflects or offers to take a message, politely ask whether anyone in admissions is available now, since you need bed availability for a discharge today.
 
 This is a de-identified referral enquiry. Refer to the patient only as "a {patient.age}-year-old {patient.sex} patient". Do not state or invent a patient name, date of birth, or medical record number, and do not accept one if offered.
 

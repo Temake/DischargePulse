@@ -12,6 +12,10 @@ from typing import Any, Iterable
 from app.agent.tools.budget import budget
 from app.agent.tools.calle_actuator import CalleActuator, TelephonyConfigError
 from app.agent.tools.replay_actuator import ReplayActuator
+from app.agent.tools.simulated_attendant import (
+    ScriptedAttendantActuator,
+    SimulatedAttendantActuator,
+)
 from app.agent.tools.telephony import TelephonyActuator
 from app.config import TelephonyMode, settings
 from app.models.schemas import CallObservation, Facility, PatientCase
@@ -85,5 +89,16 @@ def build_actuator(
         except TelephonyConfigError as exc:
             log.error("Cannot run live (%s) - falling back to replay", exc)
             return ReplayActuator(latency_seconds=replay_latency_seconds)
+
+    if resolved is TelephonyMode.SIMULATED:
+        try:
+            return SimulatedAttendantActuator()
+        except TelephonyConfigError as exc:
+            # Falls back to the free, no-call mode - never the other way.
+            log.error("Cannot place calls (%s) - falling back to scripted", exc)
+            return ScriptedAttendantActuator()
+
+    if resolved is TelephonyMode.SCRIPTED:
+        return ScriptedAttendantActuator()
 
     return ReplayActuator(latency_seconds=replay_latency_seconds)
