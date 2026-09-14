@@ -41,6 +41,7 @@ from app.models.schemas import (
     RunStatus,
 )
 from app.services.referral_service import write_referral_packet
+from app.services.run_store import RunStore
 
 log = logging.getLogger(__name__)
 
@@ -201,6 +202,7 @@ class RunManager:
         call_budget: CallBudget | None = None,
         llm_factory: Callable[[], tuple] = build_llm_components,
         packet_dir: Path | None = None,
+        store: RunStore | None = None,
     ) -> None:
         self._actuator_factory = actuator_factory
         self._llm_factory = llm_factory
@@ -209,6 +211,31 @@ class RunManager:
         self._records: dict[str, RunRecord] = {}
         self._channels: dict[str, RunChannel] = {}
         self._tasks: set[asyncio.Task] = set()
+        self._store = store or RunStore(settings.database_url)
+        self._restore_records()
+
+    def _restore_records(self) -> None:
+        """Rebuild API-visible history and WebSocket backlogs after restart.
+
+        In-flight calls cannot safely be resumed by a new process, so they are
+        marked failed rather than being presented as still running.
+        """
+        for payload in self._store.load_all():
+            record = RunRecord.model_validate(payload)
+            if not record.run.status.is_terminal and record.run.status is not RunStatus.AWAITING_APPROVAL:
+                record.run.status = RunStatus.FAILED
+                record.run.error = "Run interrupted by a server restart."
+                record.finished_at = _now()
+                self._store.save(record)
+
+            channel = RunChannel()
+            for event in record.run.events:
+                channel.publish(event_message(event))
+            channel.publish(run_message(record))
+            if record.run.status.is_terminal:
+                channel.close()
+            self._records[record.run_id] = record
+            self._channels[record.run_id] = channel
 
     # -- queries ------------------------------------------------------------
 
@@ -318,11 +345,18 @@ class RunManager:
         channel = RunChannel()
         self._records[run_id] = record
         self._channels[run_id] = channel
+        self._store.save(record)
 
         reviewer, briefer = self._llm_factory()
+        async def publish_event(event: AgentEvent) -> None:
+            # PlacementAgent appends before it invokes the sink, so the stored
+            # record always contains the exact event that was streamed.
+            self._store.save(record)
+            channel.publish(event_message(event))
+
         agent = PlacementAgent(
             actuator,
-            event_sink=lambda event: channel.publish(event_message(event)),
+            event_sink=publish_event,
             max_cycles=request.max_cycles,
             max_calls=request.max_calls,
             reviewer=reviewer,
@@ -365,6 +399,7 @@ class RunManager:
                 self._write_packet(record)
             else:
                 record.finished_at = _now()
+            self._store.save(record)
             channel.publish(run_message(record))
             # A run awaiting approval stays open: connected consoles should
             # see the case manager's decision arrive.
@@ -414,6 +449,7 @@ class RunManager:
         run.events.append(event)
 
         channel = self._channels[run_id]
+        self._store.save(record)
         channel.publish(event_message(event))
         channel.publish(run_message(record))
         channel.close()

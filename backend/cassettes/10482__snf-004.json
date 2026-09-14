@@ -1,11 +1,11 @@
 {
   "cassette_version": 1,
   "case_id": "10482",
-  "facility_id": "SNF-001",
-  "recorded_at": "2026-09-14T06:34:57.889105+00:00",
+  "facility_id": "SNF-004",
+  "recorded_at": "2026-09-14T06:37:03.746589+00:00",
   "source_mode": "live",
   "observation": {
-    "facility_id": "SNF-001",
+    "facility_id": "SNF-004",
     "phone": "+14******876",
     "mode": "live",
     "stand_in_line": true,
@@ -27,36 +27,36 @@
       "wound_vac": "unknown",
       "wound_vac_detail": ""
     },
-    "call_id": "call_NeP2blBnUFQJVleVBrAYJw",
-    "provider_call_id": "a53bdfc374f74d7da3d2e5c2e20581fa",
-    "started_at": "2026-09-14T06:33:51.240072Z",
-    "completed_at": "2026-09-14T06:34:21.641656Z",
-    "duration_seconds": 30.401584,
+    "call_id": "call_zUwhcveBYAy4AU6Uf6JQBw",
+    "provider_call_id": "9c958bc7ed3547b59fc6db76df190586",
+    "started_at": "2026-09-14T06:36:09.767483Z",
+    "completed_at": "2026-09-14T06:36:44.765146Z",
+    "duration_seconds": 34.997663,
     "outcome": "completed",
     "structured_result": {
       "payer_network": "yes",
       "payer_network_detail": "",
       "staffed_bed": "yes",
       "staffed_bed_detail": "",
-      "wound_vac": "no",
-      "wound_vac_detail": "Our wound care nurse is out this week and the night nurse isn't signed off on wound VACs, so we can't take one right now.",
+      "wound_vac": "yes",
+      "wound_vac_detail": "",
       "iv_infusion": "yes",
       "iv_infusion_detail": "",
-      "coordinator_name": "Dana",
+      "coordinator_name": "Marcus",
       "direct_callback_number": "",
-      "referral_fax_number": "555-0142",
-      "sister_facility_name": "Bayview Post-Acute Peninsula Campus",
-      "earliest_admission": "tomorrow morning",
-      "refusal_reason": "No wound VAC certified nurse available this week."
+      "referral_fax_number": "555-0198",
+      "sister_facility_name": "none",
+      "earliest_admission": "within 24 hours",
+      "refusal_reason": ""
     },
-    "summary": "The first call did not complete because the conversation ended before Bayview admissions could be reached or availability could be discussed; the recipient may have been unavailable or the line had interference. I suggest retrying in about 45 minutes. You can confirm retrying in about 45 minutes, provide a different retry time, or retry immediately.",
+    "summary": "The first call did not complete because no admissions representative was reached and the call ended after connection issues. The recipient may be busy or unavailable; you can confirm retrying in about 45 minutes, provide a different retry time, or ask to retry immediately.",
     "task_completed": false,
-    "confidence_score": 0.68,
+    "confidence_score": 0.72,
     "confidence_label": "medium",
     "evidence": [
-      "Bayview Post-Acute Center was not confirmed and admissions was not reached.",
-      "No bed, insurance, wound VAC, IV medication, coordinator, or referral-contact details were obtained.",
-      "The call ended after a brief response indicating call interference or temporary unavailability."
+      "The call ended before admissions answered the referral questions.",
+      "No availability, insurance, clinical capability, coordinator name, or referral contact details were obtained.",
+      "The only terminal event indicated connection interference rather than a completed conversation."
     ],
     "transcript_turns": [
       {
@@ -72,26 +72,26 @@
       {
         "offset_seconds": 5,
         "speaker": "bot",
-        "text": "have I reached Bayview Post-Acute Center?"
+        "text": "is this Bayview Post-Acute - Peninsula Campus admissions?"
       },
       {
-        "offset_seconds": 13,
+        "offset_seconds": 14,
         "speaker": "bot",
-        "text": "I'll hold."
+        "text": "I'm calling from hospital case management about a de-identified skilled nursing referral for a 71-year-old female patient,"
       },
       {
-        "offset_seconds": 20,
+        "offset_seconds": 21,
         "speaker": "bot",
-        "text": "I'm here."
+        "text": "and I need to check whether admissions has availability within 24 hours."
       },
       {
-        "offset_seconds": 28,
+        "offset_seconds": 32,
         "speaker": "user",
         "text": "I'm sorry. There is signal interference on our call. I'll call you back later. Thanks for waiting."
       }
     ],
     "failure_code": null,
     "failure_message": null,
-    "recorded_at": "2026-09-14T06:34:57.883910Z"
+    "recorded_at": "2026-09-14T06:37:03.739423Z"
   }
 }

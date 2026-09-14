@@ -96,9 +96,6 @@ a template.
 ## 📚 Documentation
 
 * [`ARCHITECTURE.md`](./ARCHITECTURE.md) — system architecture, components, data schemas.
-* [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) — engineering plan and verification strategy.
-* [`docs/INBOUND_GOAL_SETUP.md`](./docs/INBOUND_GOAL_SETUP.md) — configuring the stand-in facility line.
-* [`docs/DEMO_RUNBOOK.md`](./docs/DEMO_RUNBOOK.md) — call budget and recording sequence.
 
 ---
 

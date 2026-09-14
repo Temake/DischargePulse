@@ -4,13 +4,16 @@ __pycache__/
 venv/
 .venv/
 *.egg-info/
+/docs
 .pytest_cache/
-
+docs/DEMO_RUNBOOK.md
+docs/INBOUND_GOAL_SETUP.md
 IMPLEMENTATION_PLAN.md
 # Env & secrets
 .env
 .env.local
 *.key
+*.pem
 graphify-out/
 
 # Node

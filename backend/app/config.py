@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
     calle_api_key: str | None = None
+    # A pooled Neon/Postgres URL. When present, all run snapshots and their
+    # events are persisted; without it local development stays in-memory.
+    database_url: str | None = None
 
     telephony_mode: TelephonyMode = TelephonyMode.REPLAY
     record_cassettes: bool = True
