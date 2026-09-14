@@ -1,7 +1,8 @@
 /**
  * REST client for the DischargePulse backend.
  *
- * Paths are relative - Vite proxies /api to the backend in development.
+ * Paths are relative in development (Vite proxies them to :8000). Set
+ * VITE_API_BASE_URL when the static frontend and API are deployed separately.
  */
 
 import type {
@@ -26,6 +27,8 @@ export class ApiError extends Error {
   }
 }
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
 /** FastAPI sends `{detail: string}` for handled errors and a list for validation errors. */
 function detailOf(body: unknown): string | null {
   if (!body || typeof body !== 'object' || !('detail' in body)) return null
@@ -48,7 +51,7 @@ function detailOf(body: unknown): string | null {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
-    response = await fetch(path, {
+    response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
       headers: { Accept: 'application/json', ...init?.headers },
     })
