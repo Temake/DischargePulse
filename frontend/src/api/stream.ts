@@ -25,7 +25,7 @@ export interface StreamHandlers {
 const MAX_ATTEMPTS = 6
 
 function streamUrl(runId: string): string {
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+  const apiBaseUrl = (import.meta.env.API_BASE_URL ?? '').replace(/\/$/, '')
   if (apiBaseUrl) {
     const api = new URL(apiBaseUrl)
     api.protocol = api.protocol === 'https:' ? 'wss:' : 'ws:'

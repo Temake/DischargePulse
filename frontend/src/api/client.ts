@@ -27,7 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+const apiBaseUrl = (import.meta.env.API_BASE_URL ?? '').replace(/\/$/, '')
 
 /** FastAPI sends `{detail: string}` for handled errors and a list for validation errors. */
 function detailOf(body: unknown): string | null {
