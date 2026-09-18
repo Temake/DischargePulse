@@ -10,6 +10,10 @@ const BACKEND = 'http://localhost:8000'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Vite only exposes VITE_-prefixed variables to the browser by default.
+  // API_BASE_URL is read by src/api/client.ts and stream.ts, so allow the
+  // API_ prefix as well (Vercel env vars are named without VITE_).
+  envPrefix: ['VITE_', 'API_'],
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
